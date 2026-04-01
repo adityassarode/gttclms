@@ -1,0 +1,62 @@
+package com.gttc.lms.service;
+
+import com.gttc.lms.dto.BookResponse;
+import com.gttc.lms.exception.ApiException;
+import com.gttc.lms.model.Book;
+import com.gttc.lms.model.Favorite;
+import com.gttc.lms.model.User;
+import com.gttc.lms.model.enums.UserStatus;
+import com.gttc.lms.repository.FavoriteRepository;
+import java.util.List;
+import java.util.stream.Collectors;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class FavoriteService {
+    private final FavoriteRepository favoriteRepository;
+    private final BookService bookService;
+
+    public FavoriteService(FavoriteRepository favoriteRepository, BookService bookService) {
+        this.favoriteRepository = favoriteRepository;
+        this.bookService = bookService;
+    }
+
+    @Transactional(readOnly = true)
+    public List<BookResponse> listFavorites(User user) {
+        validateUser(user);
+        return favoriteRepository.findByUserOrderByCreatedAtDesc(user)
+                .stream()
+                .map(Favorite::getBook)
+                .map(DtoMapper::toBook)
+                .collect(Collectors.toList());
+    }
+
+    public void addFavorite(User user, Long bookId) {
+        validateUser(user);
+        Book book = bookService.findBook(bookId);
+        favoriteRepository.findByUserAndBook(user, book)
+                .orElseGet(() -> favoriteRepository.save(createFavorite(user, book)));
+    }
+
+    public void removeFavorite(User user, Long bookId) {
+        validateUser(user);
+        Book book = bookService.findBook(bookId);
+        favoriteRepository.findByUserAndBook(user, book)
+                .ifPresent(favoriteRepository::delete);
+    }
+
+    private Favorite createFavorite(User user, Book book) {
+        Favorite favorite = new Favorite();
+        favorite.setUser(user);
+        favorite.setBook(book);
+        return favorite;
+    }
+
+    private void validateUser(User user) {
+        if (user.getStatus() == UserStatus.BANNED) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "User is banned");
+        }
+    }
+}
