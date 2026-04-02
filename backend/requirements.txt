@@ -1,0 +1,24 @@
+Runtime requirements (Render)
+- Java 17
+- Maven 3.9+
+
+Required environment variables
+- SPRING_PROFILES_ACTIVE=prod
+- SUPABASE_ISSUER_URI=https://<project-ref>.supabase.co/auth/v1
+- SPRING_DATASOURCE_URL=jdbc:postgresql://<host>:5432/<db>
+- SPRING_DATASOURCE_USERNAME=<db-user>
+- SPRING_DATASOURCE_PASSWORD=<db-password>
+- APP_FRONTEND_URLS=https://<your-netlify-site>.netlify.app
+- APP_ADMIN_BOOTSTRAP_EMAIL=<optional-admin-email>
+
+Mail variables (if SMTP is enabled)
+- MAIL_HOST
+- MAIL_PORT=587
+- MAIL_USERNAME
+- MAIL_PASSWORD
+- APP_MAIL_FROM
+- APP_MAIL_MODE=smtp
+
+Optional
+- APP_UPLOAD_DIR=uploads
+- APP_JWT_SECRET=<custom-secret>

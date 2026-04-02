@@ -1,0 +1,514 @@
+import type {
+  AdminLoginPayload,
+  AnalyticsResponse,
+  AuthResponse,
+  BanUserPayload,
+  Book,
+  BookUpsertPayload,
+  BorrowRecord,
+  BorrowRequestPayload,
+  DonationRecord,
+  GoogleLoginPayload,
+  LoginPayload,
+  RegisterPayload,
+  ReservationRecord,
+  ReserveRequestPayload,
+  StudentRequestPayload,
+  StudentResponse,
+  User,
+  VerifyStudentPayload,
+} from "@/lib/types";
+
+const AUTH_TOKEN_KEY = "gttc_lms_auth_token";
+
+const RAW_API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  "http://localhost:8080";
+
+const API_BASE_URL = RAW_API_BASE_URL.replace(/\/$/, "");
+
+function isBrowser() {
+  return typeof window !== "undefined";
+}
+
+function getResolvedBaseUrl() {
+  if (/^https?:\/\//i.test(API_BASE_URL)) {
+    return API_BASE_URL;
+  }
+
+  if (isBrowser()) {
+    return new URL(API_BASE_URL, window.location.origin).toString();
+  }
+
+  return "http://localhost:8080";
+}
+
+function getApiOrigin() {
+  const url = new URL(getResolvedBaseUrl());
+  return `${url.protocol}//${url.host}`;
+}
+
+function buildUrl(path: string, params?: Record<string, unknown>) {
+  if (/^https?:\/\//i.test(path)) {
+    return path;
+  }
+
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  const url = new URL(normalized, `${getResolvedBaseUrl()}/`);
+
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === "") {
+        return;
+      }
+      url.searchParams.set(key, String(value));
+    });
+  }
+
+  return url.toString();
+}
+
+function extractApiMessage(payload: unknown, fallback: string) {
+  if (typeof payload === "string" && payload.trim()) {
+    return payload;
+  }
+
+  if (!payload || typeof payload !== "object") {
+    return fallback;
+  }
+
+  const response = payload as {
+    message?: unknown;
+    error?: unknown;
+    details?: unknown;
+  };
+
+  if (typeof response.message === "string" && response.message.trim()) {
+    return response.message;
+  }
+
+  if (typeof response.error === "string" && response.error.trim()) {
+    return response.error;
+  }
+
+  if (typeof response.details === "string" && response.details.trim()) {
+    return response.details;
+  }
+
+  return fallback;
+}
+
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+  fallbackMessage = "Request failed",
+  params?: Record<string, unknown>,
+): Promise<T> {
+  const headers = new Headers(options.headers);
+  const token = getStoredAuthToken();
+  const isFormBody =
+    typeof FormData !== "undefined" && options.body instanceof FormData;
+
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  if (!isFormBody && options.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  const response = await fetch(buildUrl(path, params), {
+    ...options,
+    headers,
+  });
+
+  const raw = await response.text();
+  let payload: unknown = undefined;
+
+  if (raw) {
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      payload = raw;
+    }
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      extractApiMessage(
+        payload,
+        `${fallbackMessage}${response.status ? ` (${response.status})` : ""}`,
+      ),
+    );
+  }
+
+  return payload as T;
+}
+
+function normalizeBookPayload(payload: BookUpsertPayload) {
+  return {
+    title: payload.title.trim(),
+    author: payload.author.trim(),
+    description: payload.description?.trim() || "",
+    category: payload.category.trim(),
+    keywords: payload.keywords?.trim() || "",
+    coverUrl: payload.coverUrl?.trim() || "",
+    copiesTotal: Math.max(1, Number(payload.copiesTotal || 1)),
+    featured: Boolean(payload.featured),
+  };
+}
+
+function normalizeDonationPayload(payload: {
+  title: string;
+  author: string;
+  description?: string;
+  copies: number;
+  image1?: File;
+  image2?: File;
+}) {
+  const formData = new FormData();
+  formData.append("title", payload.title);
+  formData.append("author", payload.author);
+  formData.append("description", payload.description || "");
+  formData.append("copies", String(payload.copies));
+
+  if (payload.image1) {
+    formData.append("image1", payload.image1);
+  }
+  if (payload.image2) {
+    formData.append("image2", payload.image2);
+  }
+
+  return formData;
+}
+
+export function getStoredAuthToken() {
+  if (!isBrowser()) {
+    return null;
+  }
+  return localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+export function setStoredAuthToken(token: string | null) {
+  if (!isBrowser()) {
+    return;
+  }
+
+  if (!token) {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    return;
+  }
+
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+}
+
+export const api = {
+  register(payload: RegisterPayload) {
+    return request<AuthResponse>(
+      "/api/auth/register",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      "Unable to register",
+    );
+  },
+
+  login(payload: LoginPayload) {
+    return request<AuthResponse>(
+      "/api/auth/login",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      "Unable to login",
+    );
+  },
+
+  adminLogin(payload: AdminLoginPayload) {
+    return request<AuthResponse>(
+      "/api/admin/login",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      "Unable to login as admin",
+    );
+  },
+
+  googleLogin(idToken: string | GoogleLoginPayload) {
+    const payload: GoogleLoginPayload =
+      typeof idToken === "string" ? { idToken } : idToken;
+
+    return request<AuthResponse>(
+      "/api/auth/google",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      "Unable to login with Google",
+    );
+  },
+
+  getMe() {
+    return request<User>("/api/users/me", {}, "Unable to load profile");
+  },
+
+  getBooks(params?: { q?: string; category?: string; featured?: boolean }) {
+    return request<Book[]>("/api/books", {}, "Unable to load books", params);
+  },
+
+  getBook(id: string | number) {
+    return request<Book>(`/api/books/${id}`, {}, "Unable to load book");
+  },
+
+  createBook(payload: BookUpsertPayload) {
+    return request<Book>(
+      "/api/books",
+      {
+        method: "POST",
+        body: JSON.stringify(normalizeBookPayload(payload)),
+      },
+      "Unable to create book",
+    );
+  },
+
+  updateBook(id: string | number, payload: BookUpsertPayload) {
+    return request<Book>(
+      `/api/books/${id}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(normalizeBookPayload(payload)),
+      },
+      "Unable to update book",
+    );
+  },
+
+  async deleteBook(id: string | number) {
+    await request<void>(
+      `/api/books/${id}`,
+      {
+        method: "DELETE",
+      },
+      "Unable to delete book",
+    );
+  },
+
+  getFavorites() {
+    return request<Book[]>("/api/favorites/me", {}, "Unable to load favorites");
+  },
+
+  async addFavorite(bookId: string | number) {
+    await request<void>(
+      `/api/favorites/${bookId}`,
+      {
+        method: "POST",
+      },
+      "Unable to add favorite",
+    );
+  },
+
+  async removeFavorite(bookId: string | number) {
+    await request<void>(
+      `/api/favorites/${bookId}`,
+      {
+        method: "DELETE",
+      },
+      "Unable to remove favorite",
+    );
+  },
+
+  borrowBook(bookId: string | number) {
+    const payload: BorrowRequestPayload = { bookId: Number(bookId) };
+    return request<BorrowRecord>(
+      "/api/borrows",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      "Unable to borrow book",
+    );
+  },
+
+  reserveBook(bookId: string | number) {
+    const payload: ReserveRequestPayload = { bookId: Number(bookId) };
+    return request<ReservationRecord>(
+      "/api/reservations",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      "Unable to reserve book",
+    );
+  },
+
+  getMyBorrows() {
+    return request<BorrowRecord[]>(
+      "/api/borrows/me",
+      {},
+      "Unable to load borrowed books",
+    );
+  },
+
+  returnBorrow(borrowId: string | number) {
+    return request<BorrowRecord>(
+      `/api/borrows/${borrowId}/return`,
+      {
+        method: "POST",
+      },
+      "Unable to return book",
+    );
+  },
+
+  getMyReservations() {
+    return request<ReservationRecord[]>(
+      "/api/reservations/me",
+      {},
+      "Unable to load reservations",
+    );
+  },
+
+  cancelReservation(reservationId: string | number) {
+    return request<ReservationRecord>(
+      `/api/reservations/${reservationId}/cancel`,
+      {
+        method: "POST",
+      },
+      "Unable to cancel reservation",
+    );
+  },
+
+  submitDonation(
+    payload:
+      | FormData
+      | {
+          title: string;
+          author: string;
+          description?: string;
+          copies: number;
+          image1?: File;
+          image2?: File;
+        },
+  ) {
+    const formData =
+      typeof FormData !== "undefined" && payload instanceof FormData
+        ? payload
+        : normalizeDonationPayload(payload);
+
+    return request<DonationRecord>(
+      "/api/donations",
+      {
+        method: "POST",
+        body: formData,
+      },
+      "Unable to submit donation",
+    );
+  },
+
+  getMyDonations() {
+    return request<DonationRecord[]>(
+      "/api/donations/me",
+      {},
+      "Unable to load your donations",
+    );
+  },
+
+  getAllDonations() {
+    return request<DonationRecord[]>(
+      "/api/donations",
+      {},
+      "Unable to load donations",
+    );
+  },
+
+  getAdminAnalytics() {
+    return request<AnalyticsResponse>(
+      "/api/admin/analytics",
+      {},
+      "Unable to load analytics",
+    );
+  },
+
+  getAdminUsers() {
+    return request<User[]>("/api/users", {}, "Unable to load users");
+  },
+
+  addStudent(payload: StudentRequestPayload) {
+    return request<StudentResponse>(
+      "/api/admin/students",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      "Unable to add student",
+    );
+  },
+
+  uploadStudents(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    return request<StudentResponse[]>(
+      "/api/admin/students/upload",
+      {
+        method: "POST",
+        body: formData,
+      },
+      "Unable to upload students",
+    );
+  },
+
+  banUser(payload: BanUserPayload) {
+    return request<User>(
+      "/api/users/ban",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      "Unable to ban user",
+    );
+  },
+
+  async deleteUser(userId: string | number) {
+    await request<void>(
+      `/api/users/${userId}`,
+      {
+        method: "DELETE",
+      },
+      "Unable to delete user",
+    );
+  },
+
+  lookupStudent(registerNumber: string) {
+    return request<StudentResponse>(
+      `/api/students/${encodeURIComponent(registerNumber)}`,
+      {},
+      "Unable to find student",
+    );
+  },
+
+  verifyStudent(payload: VerifyStudentPayload) {
+    return request<User>(
+      "/api/users/verify",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      "Unable to verify student",
+    );
+  },
+};
+
+export function getUploadUrl(path: string | null | undefined) {
+  if (!path) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(path)) {
+    return path;
+  }
+
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return `${getApiOrigin()}${normalized}`;
+}
