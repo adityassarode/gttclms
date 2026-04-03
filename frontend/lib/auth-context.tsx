@@ -135,6 +135,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       provider: "google",
       options: {
         redirectTo: callbackUrl,
+        queryParams: {
+          prompt: "select_account",
+        },
       },
     });
 
@@ -146,6 +149,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = React.useCallback(async () => {
     await supabase.auth.signOut();
     setSessionUser(null, null);
+
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.clear();
+      } catch {
+        // ignore local storage failures
+      }
+
+      try {
+        window.sessionStorage.clear();
+      } catch {
+        // ignore session storage failures
+      }
+
+      window.location.href = "/login";
+    }
   }, [setSessionUser]);
 
   const refreshUser = React.useCallback(async () => {

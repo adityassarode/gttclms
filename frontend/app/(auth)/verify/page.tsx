@@ -144,7 +144,7 @@ function VerifyPageContent() {
                 onChange={(event) =>
                   setRegisterNumber(event.target.value.toUpperCase())
                 }
-                placeholder="e.g., 2024CS001"
+                placeholder="e.g., 8080104"
                 className="h-11 rounded-xl pl-10 uppercase"
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
