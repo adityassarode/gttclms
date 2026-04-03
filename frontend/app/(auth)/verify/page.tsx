@@ -29,7 +29,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-export default function VerifyPage() {
+function VerifyPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const allowed = useProtectedPage({ redirectPath: "/verify" });
@@ -253,5 +253,22 @@ export default function VerifyPage() {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+export default function VerifyPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <Card className="w-full max-w-lg overflow-hidden border-border/50 shadow-xl shadow-primary/5">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold">Loading...</CardTitle>
+            <CardDescription>Preparing verification form</CardDescription>
+          </CardHeader>
+        </Card>
+      }
+    >
+      <VerifyPageContent />
+    </React.Suspense>
   );
 }

@@ -74,7 +74,7 @@ function SidebarContent({
       {/* Logo */}
       <div className="px-6 py-6 border-b border-border">
         <Image
-          src="/api/assets/logo"
+          src="/gttc-logo.png"
           alt="GTTC logo"
           width={220}
           height={220}
@@ -116,7 +116,7 @@ function SidebarContent({
       <div className="border-t border-border p-4">
         <div className="flex items-center gap-3 rounded-xl bg-secondary/50 p-3">
           <Avatar className="h-9 w-9">
-            <AvatarImage src="/placeholder-user.jpg" alt="Admin" />
+            <AvatarImage src="/placeholder-user.svg" alt="Admin" />
             <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">
               {getInitials(user?.name)}
             </AvatarFallback>
@@ -247,7 +247,7 @@ export default function AdminLayout({
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="gap-2">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src="/placeholder-user.jpg" alt="Admin" />
+                      <AvatarImage src="/placeholder-user.svg" alt="Admin" />
                       <AvatarFallback className="bg-primary text-primary-foreground text-sm">
                         {getInitials(user?.name)}
                       </AvatarFallback>

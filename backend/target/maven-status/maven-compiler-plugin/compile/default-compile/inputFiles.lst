@@ -12,6 +12,7 @@
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/dto/UserResponse.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/service/ReservationService.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/dto/BorrowRequest.java
+/workspaces/gttclms/backend/src/main/java/com/gttc/lms/config/AppBearerTokenResolver.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/GttcLmsApplication.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/model/Reservation.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/exception/ApiException.java
@@ -34,6 +35,7 @@
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/controller/AuthController.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/controller/FavoriteController.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/dto/RegisterRequest.java
+/workspaces/gttclms/backend/src/main/java/com/gttc/lms/controller/StatusController.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/dto/ReservationResponse.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/controller/BookController.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/repository/FavoriteRepository.java
@@ -43,6 +45,7 @@
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/controller/ReservationController.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/model/Borrow.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/dto/StudentResponse.java
+/workspaces/gttclms/backend/src/main/java/com/gttc/lms/config/SupabaseUserFilter.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/dto/StudentRequest.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/model/Book.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/dto/BookRequest.java
@@ -54,6 +57,7 @@
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/controller/DonationController.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/model/enums/BorrowStatus.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/dto/BanUserRequest.java
+/workspaces/gttclms/backend/src/main/java/com/gttc/lms/service/SupabaseUserService.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/model/enums/AuthProvider.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/repository/DonationRepository.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/service/StudentService.java

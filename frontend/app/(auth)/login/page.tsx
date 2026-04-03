@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const {
@@ -314,5 +314,24 @@ export default function LoginPage() {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <Card className="w-full max-w-md overflow-hidden border-border/50 shadow-xl shadow-primary/5">
+          <CardHeader className="px-4 pb-2 pt-5 text-center sm:px-6 sm:pt-6">
+            <CardTitle className="text-xl font-bold sm:text-2xl">
+              Loading...
+            </CardTitle>
+            <CardDescription>Preparing sign-in form</CardDescription>
+          </CardHeader>
+        </Card>
+      }
+    >
+      <LoginPageContent />
+    </React.Suspense>
   );
 }

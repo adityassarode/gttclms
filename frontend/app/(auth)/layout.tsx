@@ -21,7 +21,7 @@ export default function AuthLayout({
           className="group inline-flex items-center justify-center"
         >
           <Image
-            src="/api/assets/logo"
+            src="/gttc-logo.png"
             alt="GTTC logo"
             width={220}
             height={220}

@@ -30,19 +30,25 @@ spring:
     multipart:
       max-file-size: 2MB
       max-request-size: 4MB
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${SUPABASE_ISSUER_URI:https://rtfxnjhmvzpwaknakwcj.supabase.co/auth/v1}
 
 app:
   jwt:
-    secret: ${APP_JWT_SECRET:dev-secret-change-me}
+    secret: ${APP_JWT_SECRET:change-this-jwt-secret-in-env}
     issuer: gttc-lms
     expiryMinutes: 480
-  frontendUrl: ${APP_FRONTEND_URL:http://localhost:5173}
+  frontendUrl: ${APP_FRONTEND_URL:http://localhost:3000}
+  frontendUrls: ${APP_FRONTEND_URLS:}
   admin:
-    username: ${APP_ADMIN_USERNAME:Aditya Sarode}
-    password: ${APP_ADMIN_PASSWORD:Aditya@1234}
+    username: ${APP_ADMIN_USERNAME:admin}
+    password: ${APP_ADMIN_PASSWORD:}
   google:
     clientId: ${APP_GOOGLE_CLIENT_ID:}
-    allowTestToken: ${APP_GOOGLE_ALLOW_TEST_TOKEN:true}
+    allowTestToken: ${APP_GOOGLE_ALLOW_TEST_TOKEN:false}
   mail:
     mode: ${APP_MAIL_MODE:console}
     from: ${APP_MAIL_FROM:gttc-library@gttc.local}

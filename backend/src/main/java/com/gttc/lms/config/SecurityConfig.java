@@ -1,6 +1,9 @@
 package com.gttc.lms.config;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +14,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -21,11 +25,23 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableMethodSecurity
 public class SecurityConfig {
     private final JwtAuthFilter jwtAuthFilter;
+    private final SupabaseUserFilter supabaseUserFilter;
+    private final AppBearerTokenResolver appBearerTokenResolver;
     private final String frontendUrl;
+    private final String frontendUrls;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter, @Value("${app.frontendUrl}") String frontendUrl) {
+    public SecurityConfig(
+        JwtAuthFilter jwtAuthFilter,
+        SupabaseUserFilter supabaseUserFilter,
+        AppBearerTokenResolver appBearerTokenResolver,
+        @Value("${app.frontendUrl}") String frontendUrl,
+        @Value("${app.frontendUrls:}") String frontendUrls
+    ) {
         this.jwtAuthFilter = jwtAuthFilter;
+    this.supabaseUserFilter = supabaseUserFilter;
+    this.appBearerTokenResolver = appBearerTokenResolver;
         this.frontendUrl = frontendUrl;
+    this.frontendUrls = frontendUrls;
     }
 
     @Bean
@@ -34,17 +50,22 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .oauth2ResourceServer(oauth2 -> oauth2
+            .bearerTokenResolver(appBearerTokenResolver)
+            .jwt(Customizer.withDefaults())
+        )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**", "/api/admin/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/books/**").permitAll()
-                    .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+            .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()))
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+        .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterAfter(supabaseUserFilter, BearerTokenAuthenticationFilter.class);
         return http.build();
     }
 
@@ -56,12 +77,38 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(frontendUrl, "http://localhost:5173", "http://127.0.0.1:5173"));
+        config.setAllowedOrigins(resolveAllowedOrigins());
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
+    }
+
+    private List<String> resolveAllowedOrigins() {
+        Set<String> origins = new LinkedHashSet<>();
+        addOrigin(origins, frontendUrl);
+
+        for (String origin : frontendUrls.split(",")) {
+            addOrigin(origins, origin);
+        }
+
+        addOrigin(origins, "http://localhost:3000");
+        addOrigin(origins, "http://127.0.0.1:3000");
+        addOrigin(origins, "http://localhost:5173");
+        addOrigin(origins, "http://127.0.0.1:5173");
+
+        return new ArrayList<>(origins);
+    }
+
+    private void addOrigin(Set<String> origins, String origin) {
+        if (origin == null) {
+            return;
+        }
+        String trimmed = origin.trim();
+        if (!trimmed.isEmpty()) {
+            origins.add(trimmed);
+        }
     }
 }

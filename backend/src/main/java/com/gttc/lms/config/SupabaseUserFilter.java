@@ -1,6 +1,7 @@
 package com.gttc.lms.config;
 
 import com.gttc.lms.model.User;
+import com.gttc.lms.model.enums.UserStatus;
 import com.gttc.lms.service.SupabaseUserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -36,6 +37,12 @@ public class SupabaseUserFilter extends OncePerRequestFilter {
             try {
                 Jwt jwt = jwtAuth.getToken();
                 User user = supabaseUserService.resolveOrCreateFromJwt(jwt);
+
+                if (user.getStatus() == UserStatus.BANNED) {
+                    SecurityContextHolder.clearContext();
+                    filterChain.doFilter(request, response);
+                    return;
+                }
 
                 var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
                 var appAuth = new UsernamePasswordAuthenticationToken(user, jwt.getTokenValue(), authorities);

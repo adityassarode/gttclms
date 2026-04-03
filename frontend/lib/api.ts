@@ -21,10 +21,15 @@ import type {
 
 const AUTH_TOKEN_KEY = "gttc_lms_auth_token";
 
+const DEFAULT_API_BASE_URL =
+  process.env.NODE_ENV === "production"
+    ? "https://gttclms.onrender.com"
+    : "http://localhost:8080";
+
 const RAW_API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_API_BASE_URL ||
-  "http://localhost:8080";
+  DEFAULT_API_BASE_URL;
 
 const API_BASE_URL = RAW_API_BASE_URL.replace(/\/$/, "");
 
@@ -159,14 +164,22 @@ function normalizeBookPayload(payload: BookUpsertPayload) {
   };
 }
 
-function normalizeDonationPayload(payload: {
+type DonationSubmitPayload = {
   title: string;
   author: string;
   description?: string;
   copies: number;
   image1?: File;
   image2?: File;
-}) {
+};
+
+function isFormDataPayload(
+  payload: FormData | DonationSubmitPayload,
+): payload is FormData {
+  return typeof FormData !== "undefined" && payload instanceof FormData;
+}
+
+function normalizeDonationPayload(payload: DonationSubmitPayload) {
   const formData = new FormData();
   formData.append("title", payload.title);
   formData.append("author", payload.author);
@@ -379,22 +392,10 @@ export const api = {
     );
   },
 
-  submitDonation(
-    payload:
-      | FormData
-      | {
-          title: string;
-          author: string;
-          description?: string;
-          copies: number;
-          image1?: File;
-          image2?: File;
-        },
-  ) {
-    const formData =
-      typeof FormData !== "undefined" && payload instanceof FormData
-        ? payload
-        : normalizeDonationPayload(payload);
+  submitDonation(payload: FormData | DonationSubmitPayload) {
+    const formData = isFormDataPayload(payload)
+      ? payload
+      : normalizeDonationPayload(payload);
 
     return request<DonationRecord>(
       "/api/donations",

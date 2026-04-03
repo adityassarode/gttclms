@@ -157,7 +157,7 @@ function BookCard({
   );
 }
 
-export default function DashboardPage() {
+function DashboardPageContent() {
   const searchParams = useSearchParams();
   const queryInUrl = searchParams.get("q") || "";
   const { isAuthenticated } = useAuth();
@@ -480,5 +480,30 @@ export default function DashboardPage() {
         )}
       </section>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="space-y-6">
+          <Skeleton className="h-40 w-full rounded-3xl" />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <Card key={index} className="border-border/50 bg-card">
+                <CardContent className="space-y-3 p-4">
+                  <Skeleton className="h-32 w-full rounded-lg" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      }
+    >
+      <DashboardPageContent />
+    </React.Suspense>
   );
 }

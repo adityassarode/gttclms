@@ -94,7 +94,7 @@ function SidebarContent({
       {/* Logo */}
       <div className="px-6 py-6">
         <Image
-          src="/api/assets/logo"
+          src="/gttc-logo.png"
           alt="GTTC logo"
           width={220}
           height={220}
@@ -170,7 +170,7 @@ function SidebarContent({
         {isAuthenticated ? (
           <div className="flex items-center gap-3 rounded-xl bg-secondary/50 p-3">
             <Avatar className="h-9 w-9">
-              <AvatarImage src="/placeholder-user.jpg" alt="User" />
+              <AvatarImage src="/placeholder-user.svg" alt="User" />
               <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
                 {getInitials(user.name)}
               </AvatarFallback>
@@ -367,7 +367,7 @@ export default function LibraryLayout({
                     className="relative h-9 w-9 rounded-full"
                   >
                     <Avatar className="h-9 w-9">
-                      <AvatarImage src="/placeholder-user.jpg" alt="User" />
+                      <AvatarImage src="/placeholder-user.svg" alt="User" />
                       <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
                         {getInitials(user?.name)}
                       </AvatarFallback>
