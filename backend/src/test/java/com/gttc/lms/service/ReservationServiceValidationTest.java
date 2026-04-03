@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.gttc.lms.exception.ApiException;
 import com.gttc.lms.repository.ReservationRepository;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,7 +34,8 @@ class ReservationServiceValidationTest {
 
     @Test
     void reserveBookWhenUserIsNullThrowsUnauthorized() {
-        ApiException exception = assertThrows(ApiException.class, () -> reservationService.reserveBook(null, 1L));
+        UUID id = UUID.randomUUID();
+        ApiException exception = assertThrows(ApiException.class, () -> reservationService.reserveBook(null, id));
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatus());
         assertEquals("Authentication required", exception.getMessage());

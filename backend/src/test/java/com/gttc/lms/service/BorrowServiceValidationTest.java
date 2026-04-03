@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.gttc.lms.exception.ApiException;
 import com.gttc.lms.repository.BorrowRepository;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,7 +34,8 @@ class BorrowServiceValidationTest {
 
     @Test
     void borrowBookWhenUserIsNullThrowsUnauthorized() {
-        ApiException exception = assertThrows(ApiException.class, () -> borrowService.borrowBook(null, 1L));
+        UUID id = UUID.randomUUID();
+        ApiException exception = assertThrows(ApiException.class, () -> borrowService.borrowBook(null, id));
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatus());
         assertEquals("Authentication required", exception.getMessage());
