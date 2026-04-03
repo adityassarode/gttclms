@@ -33,6 +33,7 @@ export default function AdminLoginPage() {
     logout,
     isAuthenticated,
     isAdmin,
+    isReady,
   } = useAuth();
 
   const [showPassword, setShowPassword] = React.useState(false);
@@ -40,10 +41,18 @@ export default function AdminLoginPage() {
   const [form, setForm] = React.useState({ username: "", password: "" });
 
   React.useEffect(() => {
+    if (!isReady) {
+      return;
+    }
+
     if (isAuthenticated && isAdmin) {
       router.replace("/admin");
     }
-  }, [isAdmin, isAuthenticated, router]);
+  }, [isAdmin, isAuthenticated, isReady, router]);
+
+  if (!isReady) {
+    return null;
+  }
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();

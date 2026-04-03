@@ -33,7 +33,7 @@ function VerifyPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const allowed = useProtectedPage({ redirectPath: "/verify" });
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, isReady } = useAuth();
 
   const [registerNumber, setRegisterNumber] = React.useState(
     user?.registerNumber || "",
@@ -51,10 +51,14 @@ function VerifyPageContent() {
   const redirectTo = searchParams.get("redirect") || "/";
 
   React.useEffect(() => {
+    if (!isReady) {
+      return;
+    }
+
     if (user?.verified) {
       router.replace(redirectTo);
     }
-  }, [redirectTo, router, user]);
+  }, [isReady, redirectTo, router, user]);
 
   const handleLookup = async () => {
     if (!registerNumber.trim()) {
