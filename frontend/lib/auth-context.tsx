@@ -59,6 +59,22 @@ async function getSupabaseAccessToken() {
   return data.session?.access_token ?? null;
 }
 
+function getFallbackUser(email?: string | null): User {
+  return {
+    id: 0,
+    email: email || "pending@gttc.local",
+    name: "Pending User",
+    phone: null,
+    registerNumber: null,
+    department: null,
+    semester: null,
+    year: null,
+    role: "USER",
+    status: "ACTIVE",
+    verified: false,
+  };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [isReady, setIsReady] = React.useState(false);
@@ -159,6 +175,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     let cancelled = false;
 
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (cancelled) {
+          return;
+        }
+
+        const token = session?.access_token || null;
+
+        if (token) {
+          setStoredAuthToken(token);
+
+          try {
+            const profile = await api.getMe();
+            if (!cancelled) {
+              setSessionUser(profile, token);
+            }
+          } catch {
+            if (!cancelled) {
+              setUser(getFallbackUser(session?.user?.email));
+            }
+          }
+        } else if (!cancelled) {
+          setSessionUser(null, null);
+        }
+      },
+    );
+
     const hydrate = async () => {
       let token = getStoredAuthToken();
 
@@ -183,9 +226,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(profile);
         }
       } catch {
-        setStoredAuthToken(null);
         if (!cancelled) {
-          setUser(null);
+          setUser(getFallbackUser());
         }
       } finally {
         if (!cancelled) {
@@ -198,14 +240,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       cancelled = true;
+      listener?.subscription.unsubscribe();
     };
-  }, []);
+  }, [setSessionUser]);
 
   const value = React.useMemo<AuthContextValue>(
     () => ({
       user,
       isReady,
-      isAuthenticated: Boolean(user) || Boolean(getStoredAuthToken()),
+      isAuthenticated: Boolean(user),
       isAdmin: user?.role === "ADMIN",
       signInWithPassword,
       signInWithAdminCredentials,

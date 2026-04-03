@@ -127,15 +127,23 @@ function LoginPageContent() {
 
     const redirectTo = resolveRedirectTarget();
 
+    if (!user) {
+      // wait for backend user load
+      const timeoutId = window.setTimeout(() => {
+        if (!user) {
+          window.location.reload();
+        }
+      }, 2000);
+
+      return () => {
+        window.clearTimeout(timeoutId);
+      };
+    }
+
     try {
       window.sessionStorage.removeItem(OAUTH_REDIRECT_KEY);
     } catch {
       // ignore session storage failures
-    }
-
-    if (!user) {
-      window.location.href = redirectTo;
-      return;
     }
 
     if (user.role === "USER" && !user.verified) {

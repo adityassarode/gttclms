@@ -8,6 +8,7 @@ import com.gttc.lms.model.User;
 import com.gttc.lms.model.enums.UserStatus;
 import com.gttc.lms.repository.UserRepository;
 import com.gttc.lms.service.AuthService;
+import com.gttc.lms.service.CurrentUserResolver;
 import com.gttc.lms.service.DtoMapper;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,19 +31,30 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
     private final AuthService authService;
     private final UserRepository userRepository;
+    private final CurrentUserResolver currentUserResolver;
 
-    public UserController(AuthService authService, UserRepository userRepository) {
+    public UserController(
+            AuthService authService,
+            UserRepository userRepository,
+            CurrentUserResolver currentUserResolver
+    ) {
         this.authService = authService;
         this.userRepository = userRepository;
+        this.currentUserResolver = currentUserResolver;
     }
 
     @GetMapping("/me")
-    public UserResponse me(@AuthenticationPrincipal User user) {
-        return DtoMapper.toUser(user);
+    public UserResponse me(@AuthenticationPrincipal Object principal, Authentication authentication) {
+        return DtoMapper.toUser(currentUserResolver.resolve(principal, authentication));
     }
 
     @PostMapping("/verify")
-    public UserResponse verify(@AuthenticationPrincipal User user, @Valid @RequestBody VerifyStudentRequest request) {
+    public UserResponse verify(
+            @AuthenticationPrincipal Object principal,
+            Authentication authentication,
+            @Valid @RequestBody VerifyStudentRequest request
+    ) {
+        User user = currentUserResolver.resolve(principal, authentication);
         return authService.verifyStudent(user, request);
     }
 

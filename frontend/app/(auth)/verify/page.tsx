@@ -15,7 +15,6 @@ import {
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { useProtectedPage } from "@/lib/route-guards";
 import { getErrorMessage } from "@/lib/ui-helpers";
 import type { StudentResponse } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -32,7 +31,6 @@ import {
 function VerifyPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const allowed = useProtectedPage({ redirectPath: "/verify" });
   const { user, refreshUser, isReady } = useAuth();
 
   const [registerNumber, setRegisterNumber] = React.useState(
@@ -112,8 +110,12 @@ function VerifyPageContent() {
     }
   };
 
-  if (!allowed) {
-    return <div className="py-8" />;
+  if (!isReady) {
+    return null;
+  }
+
+  if (!user) {
+    return null;
   }
 
   return (
@@ -240,7 +242,7 @@ function VerifyPageContent() {
             <Button
               onClick={handleVerify}
               className="h-11 w-full rounded-xl font-medium"
-              disabled={isVerifying}
+              disabled={!student || isVerifying}
             >
               {isVerifying ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

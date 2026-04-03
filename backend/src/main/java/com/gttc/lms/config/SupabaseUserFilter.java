@@ -33,6 +33,11 @@ public class SupabaseUserFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         var currentAuth = SecurityContextHolder.getContext().getAuthentication();
 
+        if (currentAuth == null) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         if (currentAuth instanceof JwtAuthenticationToken jwtAuth && currentAuth.isAuthenticated()) {
             try {
                 Jwt jwt = jwtAuth.getToken();
@@ -45,8 +50,7 @@ public class SupabaseUserFilter extends OncePerRequestFilter {
                 }
 
                 var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
-                var appAuth = new UsernamePasswordAuthenticationToken(user, jwt.getTokenValue(), authorities);
-                appAuth.setDetails(jwtAuth.getDetails());
+                var appAuth = new UsernamePasswordAuthenticationToken(user, null, authorities);
 
                 SecurityContextHolder.getContext().setAuthentication(appAuth);
             } catch (Exception ex) {

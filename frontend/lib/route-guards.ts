@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { getStoredAuthToken } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
 function normalizeRedirectPath(path?: string | null) {
@@ -23,19 +22,17 @@ function verifyPath(redirectPath: string) {
 export function useProtectedPage(opts?: { redirectPath?: string }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isAuthenticated, isReady, user } = useAuth();
+  const { isReady, user } = useAuth();
 
   const redirectTarget = normalizeRedirectPath(opts?.redirectPath || pathname);
-  const needsVerification = user?.role === "USER" && !user.verified;
+  const needsVerification = user && user.role === "USER" && !user.verified;
 
   React.useEffect(() => {
     if (!isReady) {
       return;
     }
 
-    const hasToken = Boolean(getStoredAuthToken());
-
-    if (!hasToken && !isAuthenticated) {
+    if (!user) {
       router.replace(loginPath(redirectTarget));
       return;
     }
@@ -43,22 +40,13 @@ export function useProtectedPage(opts?: { redirectPath?: string }) {
     if (needsVerification && pathname !== "/verify") {
       router.replace(verifyPath(redirectTarget));
     }
-  }, [
-    isAuthenticated,
-    isReady,
-    needsVerification,
-    pathname,
-    redirectTarget,
-    router,
-  ]);
+  }, [isReady, needsVerification, pathname, redirectTarget, router, user]);
 
   if (!isReady) {
     return false;
   }
 
-  const hasToken = Boolean(getStoredAuthToken());
-
-  if (!hasToken && !isAuthenticated) {
+  if (!user) {
     return false;
   }
 
@@ -72,7 +60,7 @@ export function useProtectedPage(opts?: { redirectPath?: string }) {
 export function useProtectedAdminPage() {
   const pathname = usePathname();
   const router = useRouter();
-  const { isAuthenticated, isReady, user } = useAuth();
+  const { isReady, user } = useAuth();
   const redirectTarget = normalizeRedirectPath(pathname);
   const isAdmin = user?.role === "ADMIN";
 
@@ -81,30 +69,19 @@ export function useProtectedAdminPage() {
       return;
     }
 
-    const hasToken = Boolean(getStoredAuthToken());
-
-    if (!hasToken && !isAuthenticated) {
+    if (!user) {
       router.replace(
         `/admin/login?redirect=${encodeURIComponent(redirectTarget)}`,
       );
       return;
     }
 
-    if (!user) {
-      return;
-    }
-
     if (!isAdmin) {
       router.replace("/");
     }
-  }, [isAdmin, isAuthenticated, isReady, redirectTarget, router, user]);
+  }, [isAdmin, isReady, redirectTarget, router, user]);
 
   if (!isReady) {
-    return false;
-  }
-
-  const hasToken = Boolean(getStoredAuthToken());
-  if (!hasToken && !isAuthenticated) {
     return false;
   }
 
@@ -118,8 +95,8 @@ export function useProtectedAdminPage() {
 export function useRequireLoginAction() {
   const pathname = usePathname();
   const router = useRouter();
-  const { isAuthenticated, isReady, user } = useAuth();
-  const needsVerification = user?.role === "USER" && !user.verified;
+  const { isReady, user } = useAuth();
+  const needsVerification = user && user.role === "USER" && !user.verified;
 
   return React.useCallback(
     (redirectPath?: string) => {
@@ -129,9 +106,7 @@ export function useRequireLoginAction() {
         return false;
       }
 
-      const hasToken = Boolean(getStoredAuthToken());
-
-      if (!hasToken && !isAuthenticated) {
+      if (!user) {
         router.push(loginPath(target));
         return false;
       }
@@ -143,6 +118,6 @@ export function useRequireLoginAction() {
 
       return true;
     },
-    [isAuthenticated, isReady, needsVerification, pathname, router],
+    [isReady, needsVerification, pathname, router, user],
   );
 }

@@ -16,7 +16,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -24,20 +23,17 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
-    private final JwtAuthFilter jwtAuthFilter;
     private final SupabaseUserFilter supabaseUserFilter;
     private final AppBearerTokenResolver appBearerTokenResolver;
     private final String frontendUrl;
     private final String frontendUrls;
 
     public SecurityConfig(
-            JwtAuthFilter jwtAuthFilter,
             SupabaseUserFilter supabaseUserFilter,
             AppBearerTokenResolver appBearerTokenResolver,
             @Value("${app.frontendUrl:}") String frontendUrl,
             @Value("${app.frontendUrls:}") String frontendUrls
     ) {
-        this.jwtAuthFilter = jwtAuthFilter;
         this.supabaseUserFilter = supabaseUserFilter;
         this.appBearerTokenResolver = appBearerTokenResolver;
         this.frontendUrl = frontendUrl;
@@ -64,7 +60,6 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()))
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(supabaseUserFilter, BearerTokenAuthenticationFilter.class);
         return http.build();
     }
