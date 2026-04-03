@@ -46,7 +46,7 @@ public class SupabaseUserService {
         String displayName = resolveDisplayName(jwt, email);
         String phone = resolvePhone(jwt);
 
-        Optional<User> byProviderId = userRepository.findByProviderId(subject);
+        Optional<User> byProviderId = userRepository.findByProviderAndProviderId(AuthProvider.SUPABASE, subject);
         Optional<User> byEmail = userRepository.findByEmail(email);
 
         User user = byProviderId.or(() -> byEmail).orElseGet(User::new);
