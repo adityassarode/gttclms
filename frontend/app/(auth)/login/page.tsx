@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Eye,
@@ -40,6 +41,7 @@ function LoginPageContent() {
   } = useAuth();
 
   const [mode, setMode] = React.useState<"login" | "register">("login");
+  const [checkedAuth, setCheckedAuth] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
 
@@ -53,17 +55,23 @@ function LoginPageContent() {
   const redirectTo = searchParams.get("redirect") || "/";
 
   React.useEffect(() => {
-    if (!isAuthenticated) {
-      return;
-    }
+  const check = async () => {
+    const { data } = await supabase.auth.getSession();
 
-    if (user?.role === "USER" && !user.verified) {
+    setCheckedAuth(true);
+
+    if (!data.session) return;
+
+    if (user?.role === "USER" && !user?.verified) {
       router.replace("/verify");
       return;
     }
 
     router.replace(redirectTo);
-  }, [isAuthenticated, redirectTo, router, user]);
+  };
+
+  check();
+}, [redirectTo, router, user]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -144,7 +152,7 @@ function LoginPageContent() {
       // needed on failure paths.
     }
   };
-
+  if (!checkedAuth) return null;
   return (
     <Card className="w-full max-w-md overflow-hidden border-border/50 shadow-xl shadow-primary/5">
       <CardHeader className="px-4 pb-2 pt-5 text-center sm:px-6 sm:pt-6">
