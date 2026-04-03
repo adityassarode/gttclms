@@ -1,6 +1,5 @@
 [build]
   command = "npm install --prefix frontend && npm run build --prefix frontend"
-  publish = "frontend/.next"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
