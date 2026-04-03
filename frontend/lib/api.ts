@@ -133,9 +133,10 @@ async function request<T>(
   options: RequestInit = {},
   fallbackMessage = "Request failed",
   params?: Record<string, unknown>,
+  includeAuth = true,
 ): Promise<T> {
   const headers = new Headers(options.headers);
-  const token = await getActiveAuthToken();
+  const token = includeAuth ? await getActiveAuthToken() : null;
   const isFormBody =
     typeof FormData !== "undefined" && options.body instanceof FormData;
 
@@ -515,6 +516,8 @@ export const api = {
       `/api/students/${encodeURIComponent(registerNumber)}`,
       {},
       "Unable to find student",
+      undefined,
+      false,
     );
   },
 
