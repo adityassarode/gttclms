@@ -9,6 +9,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@netlify/plugin-nextjs": "^5.15.9",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-avatar": "^1.1.11",
@@ -44,6 +45,6 @@
     "typescript": "^5.6.3"
   },
   "engines": {
-  "node": ">=20"
-}
+    "node": ">=20"
+  }
 }
