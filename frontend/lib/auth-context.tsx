@@ -42,6 +42,7 @@ const defaultValue: AuthContextValue = {
 };
 
 const AuthContext = React.createContext<AuthContextValue>(defaultValue);
+const OAUTH_REDIRECT_KEY = "gttc_lms_oauth_redirect";
 
 function normalizeRedirectPath(path?: string) {
   if (!path) {
@@ -104,7 +105,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = React.useCallback(async (redirectTo?: string) => {
     const targetPath = normalizeRedirectPath(redirectTo);
-    const callbackUrl = `${window.location.origin}/login?redirect=${encodeURIComponent(targetPath)}`;
+    const callbackUrl = `${window.location.origin}/login`;
+
+    try {
+      window.sessionStorage.setItem(OAUTH_REDIRECT_KEY, targetPath);
+    } catch {
+      // ignore session storage failures
+    }
 
     setStoredAuthToken(null);
 

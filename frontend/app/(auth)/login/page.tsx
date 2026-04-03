@@ -13,7 +13,9 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { setStoredAuthToken } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { supabase } from "@/lib/supabase";
 import { getErrorMessage } from "@/lib/ui-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +28,24 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+
+const OAUTH_REDIRECT_KEY = "gttc_lms_oauth_redirect";
+
+function normalizeRedirectPath(path?: string | null) {
+  if (!path) {
+    return "/";
+  }
+
+  if (!path.startsWith("/")) {
+    return "/";
+  }
+
+  if (path.startsWith("/login") || path.startsWith("/admin/login")) {
+    return "/";
+  }
+
+  return path;
+}
 
 function LoginPageContent() {
   const router = useRouter();
@@ -40,6 +60,7 @@ function LoginPageContent() {
   } = useAuth();
 
   const [mode, setMode] = React.useState<"login" | "register">("login");
+  const [checkedAuth, setCheckedAuth] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
 
@@ -50,11 +71,62 @@ function LoginPageContent() {
     phone: "",
   });
 
-  const redirectTo = searchParams.get("redirect") || "/";
+  const resolveRedirectTarget = React.useCallback(() => {
+    const fromQuery = normalizeRedirectPath(searchParams.get("redirect"));
+    if (fromQuery !== "/") {
+      return fromQuery;
+    }
+
+    try {
+      return normalizeRedirectPath(
+        window.sessionStorage.getItem(OAUTH_REDIRECT_KEY),
+      );
+    } catch {
+      return "/";
+    }
+  }, [searchParams]);
 
   React.useEffect(() => {
-    if (!isReady || !user) {
+    let cancelled = false;
+
+    const handleAuth = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token || null;
+
+        if (token) {
+          setStoredAuthToken(token);
+          try {
+            localStorage.setItem("token", token);
+          } catch {
+            // ignore local storage failures
+          }
+        }
+      } finally {
+        if (!cancelled) {
+          setCheckedAuth(true);
+        }
+      }
+    };
+
+    handleAuth();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (!checkedAuth || !isReady || !user) {
       return;
+    }
+
+    const redirectTo = resolveRedirectTarget();
+
+    try {
+      window.sessionStorage.removeItem(OAUTH_REDIRECT_KEY);
+    } catch {
+      // ignore session storage failures
     }
 
     if (user.role === "USER" && !user.verified) {
@@ -63,7 +135,7 @@ function LoginPageContent() {
     }
 
     router.replace(redirectTo);
-  }, [isReady, redirectTo, router, user]);
+  }, [checkedAuth, isReady, resolveRedirectTarget, router, user]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -84,6 +156,7 @@ function LoginPageContent() {
 
     setIsLoading(true);
     try {
+      const redirectTo = resolveRedirectTarget();
       const identifier = form.email.trim();
       const profile =
         mode === "login"
@@ -134,7 +207,7 @@ function LoginPageContent() {
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
-      await signInWithGoogle(redirectTo);
+      await signInWithGoogle(resolveRedirectTarget());
     } catch (error) {
       toast.error(getErrorMessage(error, "Google login failed"));
       setIsLoading(false);
@@ -144,7 +217,7 @@ function LoginPageContent() {
       // needed on failure paths.
     }
   };
-  if (!isReady) return null;
+  if (!checkedAuth || !isReady) return null;
   return (
     <Card className="w-full max-w-md overflow-hidden border-border/50 shadow-xl shadow-primary/5">
       <CardHeader className="px-4 pb-2 pt-5 text-center sm:px-6 sm:pt-6">

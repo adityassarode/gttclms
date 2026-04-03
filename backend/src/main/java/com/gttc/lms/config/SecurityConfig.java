@@ -94,7 +94,6 @@ public class SecurityConfig {
             addOrigin(origins, origin);
         }
 
-        addOrigin(origins, "http://localhost:3000");
         addOrigin(origins, "https://gttclms.netlify.app");
 
         return new ArrayList<>(origins);

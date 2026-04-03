@@ -413,7 +413,7 @@ export default function LibraryLayout({
                       className="text-destructive focus:text-destructive"
                       onClick={() => {
                         logout();
-                        router.push("/login");
+                        router.replace("/login");
                       }}
                     >
                       <LogOut className="mr-2 h-4 w-4" />

@@ -20,6 +20,7 @@ import type {
 } from "@/lib/types";
 
 const AUTH_TOKEN_KEY = "gttc_lms_auth_token";
+const LEGACY_AUTH_TOKEN_KEY = "token";
 
 const DEFAULT_API_BASE_URL =
   process.env.NODE_ENV === "production"
@@ -223,7 +224,10 @@ export function getStoredAuthToken() {
   if (!isBrowser()) {
     return null;
   }
-  return localStorage.getItem(AUTH_TOKEN_KEY);
+  return (
+    localStorage.getItem(AUTH_TOKEN_KEY) ||
+    localStorage.getItem(LEGACY_AUTH_TOKEN_KEY)
+  );
 }
 
 export function setStoredAuthToken(token: string | null) {
@@ -233,10 +237,12 @@ export function setStoredAuthToken(token: string | null) {
 
   if (!token) {
     localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY);
     return;
   }
 
   localStorage.setItem(AUTH_TOKEN_KEY, token);
+  localStorage.setItem(LEGACY_AUTH_TOKEN_KEY, token);
 }
 
 export const api = {
