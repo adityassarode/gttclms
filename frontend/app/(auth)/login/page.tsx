@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import {
   Eye,
   EyeOff,
@@ -48,7 +48,6 @@ function normalizeRedirectPath(path?: string | null) {
 }
 
 function LoginPageContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const {
     signInWithPassword,
@@ -60,7 +59,8 @@ function LoginPageContent() {
   } = useAuth();
 
   const [mode, setMode] = React.useState<"login" | "register">("login");
-  const [checkedAuth, setCheckedAuth] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
+  const [hasSession, setHasSession] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
 
@@ -92,19 +92,19 @@ function LoginPageContent() {
     const handleAuth = async () => {
       try {
         const { data } = await supabase.auth.getSession();
-        const token = data.session?.access_token || null;
+        const session = data.session;
+        const token = session?.access_token || null;
+
+        if (!cancelled) {
+          setHasSession(Boolean(session));
+        }
 
         if (token) {
           setStoredAuthToken(token);
-          try {
-            localStorage.setItem("token", token);
-          } catch {
-            // ignore local storage failures
-          }
         }
       } finally {
         if (!cancelled) {
-          setCheckedAuth(true);
+          setLoading(false);
         }
       }
     };
@@ -117,7 +117,11 @@ function LoginPageContent() {
   }, []);
 
   React.useEffect(() => {
-    if (!checkedAuth || !isReady || !user) {
+    if (loading || !isReady) {
+      return;
+    }
+
+    if (!hasSession && !user) {
       return;
     }
 
@@ -129,13 +133,18 @@ function LoginPageContent() {
       // ignore session storage failures
     }
 
-    if (user.role === "USER" && !user.verified) {
-      router.replace("/verify");
+    if (!user) {
+      window.location.href = redirectTo;
       return;
     }
 
-    router.replace(redirectTo);
-  }, [checkedAuth, isReady, resolveRedirectTarget, router, user]);
+    if (user.role === "USER" && !user.verified) {
+      window.location.href = "/verify";
+      return;
+    }
+
+    window.location.href = redirectTo;
+  }, [loading, isReady, hasSession, resolveRedirectTarget, user]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -185,18 +194,18 @@ function LoginPageContent() {
         toast.success(
           "Account created. Verify your student ID to unlock restricted actions.",
         );
-        router.push("/verify");
+        window.location.href = "/verify";
         return;
       }
 
       if (profile.role === "ADMIN") {
         toast.success("Admin login successful");
-        router.push("/admin");
+        window.location.href = "/admin";
         return;
       }
 
       toast.success("Welcome back");
-      router.push(redirectTo);
+      window.location.href = redirectTo;
     } catch (error) {
       toast.error(getErrorMessage(error, "Authentication failed"));
     } finally {
@@ -217,7 +226,7 @@ function LoginPageContent() {
       // needed on failure paths.
     }
   };
-  if (!checkedAuth || !isReady) return null;
+  if (loading || !isReady) return null;
   return (
     <Card className="w-full max-w-md overflow-hidden border-border/50 shadow-xl shadow-primary/5">
       <CardHeader className="px-4 pb-2 pt-5 text-center sm:px-6 sm:pt-6">

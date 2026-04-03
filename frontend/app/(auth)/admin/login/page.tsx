@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import {
   Eye,
   EyeOff,
@@ -12,7 +11,9 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
+import { setStoredAuthToken } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { supabase } from "@/lib/supabase";
 import { getErrorMessage } from "@/lib/ui-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,31 +27,73 @@ import {
 } from "@/components/ui/card";
 
 export default function AdminLoginPage() {
-  const router = useRouter();
   const {
     signInWithPassword,
     signInWithAdminCredentials,
     logout,
-    isAuthenticated,
-    isAdmin,
+    user,
     isReady,
   } = useAuth();
 
+  const [loading, setLoading] = React.useState(true);
+  const [hasSession, setHasSession] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [form, setForm] = React.useState({ username: "", password: "" });
 
   React.useEffect(() => {
-    if (!isReady) {
+    let cancelled = false;
+
+    const handleAuth = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const session = data.session;
+
+        if (!cancelled) {
+          setHasSession(Boolean(session));
+        }
+
+        const token = session?.access_token || null;
+        if (token) {
+          setStoredAuthToken(token);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    handleAuth();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (loading || !isReady) {
       return;
     }
 
-    if (isAuthenticated && isAdmin) {
-      router.replace("/admin");
+    if (!hasSession && !user) {
+      return;
     }
-  }, [isAdmin, isAuthenticated, isReady, router]);
 
-  if (!isReady) {
+    if (!user) {
+      window.location.href = "/admin";
+      return;
+    }
+
+    if (user.role === "ADMIN") {
+      window.location.href = "/admin";
+      return;
+    }
+
+    window.location.href = "/";
+  }, [loading, isReady, hasSession, user]);
+
+  if (loading || !isReady) {
     return null;
   }
 
@@ -82,7 +125,7 @@ export default function AdminLoginPage() {
         return;
       }
       toast.success("Admin login successful");
-      router.push("/admin");
+      window.location.href = "/admin";
     } catch (error) {
       toast.error(getErrorMessage(error, "Invalid admin credentials"));
     } finally {

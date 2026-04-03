@@ -205,7 +205,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       user,
       isReady,
-      isAuthenticated: Boolean(user),
+      isAuthenticated: Boolean(user) || Boolean(getStoredAuthToken()),
       isAdmin: user?.role === "ADMIN",
       signInWithPassword,
       signInWithAdminCredentials,

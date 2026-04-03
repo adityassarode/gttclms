@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { getStoredAuthToken } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
 function normalizeRedirectPath(path?: string | null) {
@@ -32,7 +33,9 @@ export function useProtectedPage(opts?: { redirectPath?: string }) {
       return;
     }
 
-    if (!isAuthenticated) {
+    const hasToken = Boolean(getStoredAuthToken());
+
+    if (!hasToken && !isAuthenticated) {
       router.replace(loginPath(redirectTarget));
       return;
     }
@@ -53,7 +56,9 @@ export function useProtectedPage(opts?: { redirectPath?: string }) {
     return false;
   }
 
-  if (!isAuthenticated) {
+  const hasToken = Boolean(getStoredAuthToken());
+
+  if (!hasToken && !isAuthenticated) {
     return false;
   }
 
@@ -76,19 +81,38 @@ export function useProtectedAdminPage() {
       return;
     }
 
-    if (!isAuthenticated) {
+    const hasToken = Boolean(getStoredAuthToken());
+
+    if (!hasToken && !isAuthenticated) {
       router.replace(
         `/admin/login?redirect=${encodeURIComponent(redirectTarget)}`,
       );
       return;
     }
 
+    if (!user) {
+      return;
+    }
+
     if (!isAdmin) {
       router.replace("/");
     }
-  }, [isAdmin, isAuthenticated, isReady, redirectTarget, router]);
+  }, [isAdmin, isAuthenticated, isReady, redirectTarget, router, user]);
 
-  return isReady && isAuthenticated && isAdmin;
+  if (!isReady) {
+    return false;
+  }
+
+  const hasToken = Boolean(getStoredAuthToken());
+  if (!hasToken && !isAuthenticated) {
+    return false;
+  }
+
+  if (!user) {
+    return false;
+  }
+
+  return isAdmin;
 }
 
 export function useRequireLoginAction() {
@@ -105,7 +129,9 @@ export function useRequireLoginAction() {
         return false;
       }
 
-      if (!isAuthenticated) {
+      const hasToken = Boolean(getStoredAuthToken());
+
+      if (!hasToken && !isAuthenticated) {
         router.push(loginPath(target));
         return false;
       }
