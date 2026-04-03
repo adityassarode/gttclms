@@ -4,6 +4,7 @@ import com.gttc.lms.dto.BookResponse;
 import com.gttc.lms.model.User;
 import com.gttc.lms.service.FavoriteService;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,12 +28,12 @@ public class FavoriteController {
     }
 
     @PostMapping("/{bookId}")
-    public void add(@AuthenticationPrincipal User user, @PathVariable Long bookId) {
+    public void add(@AuthenticationPrincipal User user, @PathVariable UUID bookId) {
         favoriteService.addFavorite(user, bookId);
     }
 
     @DeleteMapping("/{bookId}")
-    public void remove(@AuthenticationPrincipal User user, @PathVariable Long bookId) {
+    public void remove(@AuthenticationPrincipal User user, @PathVariable UUID bookId) {
         favoriteService.removeFavorite(user, bookId);
     }
 }

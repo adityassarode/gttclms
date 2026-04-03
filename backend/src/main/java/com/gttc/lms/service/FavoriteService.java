@@ -8,6 +8,7 @@ import com.gttc.lms.model.User;
 import com.gttc.lms.model.enums.UserStatus;
 import com.gttc.lms.repository.FavoriteRepository;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -33,14 +34,14 @@ public class FavoriteService {
                 .collect(Collectors.toList());
     }
 
-    public void addFavorite(User user, Long bookId) {
+    public void addFavorite(User user, UUID bookId) {
         validateUser(user);
         Book book = bookService.findBook(bookId);
         favoriteRepository.findByUserAndBook(user, book)
                 .orElseGet(() -> favoriteRepository.save(createFavorite(user, book)));
     }
 
-    public void removeFavorite(User user, Long bookId) {
+    public void removeFavorite(User user, UUID bookId) {
         validateUser(user);
         Book book = bookService.findBook(bookId);
         favoriteRepository.findByUserAndBook(user, book)

@@ -2,8 +2,9 @@ package com.gttc.lms.repository;
 
 import com.gttc.lms.model.Student;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface StudentRepository extends JpaRepository<Student, Long> {
+public interface StudentRepository extends JpaRepository<Student, UUID> {
     Optional<Student> findByRegisterNumber(String registerNumber);
 }

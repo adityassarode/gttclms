@@ -2,9 +2,10 @@ package com.gttc.lms.dto;
 
 import com.gttc.lms.model.enums.BorrowStatus;
 import java.time.Instant;
+import java.util.UUID;
 
 public class BorrowResponse {
-    private Long id;
+    private UUID id;
     private BookResponse book;
     private Instant borrowedAt;
     private Instant dueAt;
@@ -12,11 +13,11 @@ public class BorrowResponse {
     private BorrowStatus status;
     private int fee;
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 

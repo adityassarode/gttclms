@@ -1,7 +1,9 @@
 package com.gttc.lms.dto;
 
+import java.util.UUID;
+
 public class BookResponse {
-    private Long id;
+    private UUID id;
     private String title;
     private String author;
     private String description;
@@ -12,11 +14,11 @@ public class BookResponse {
     private int copiesAvailable;
     private boolean featured;
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 

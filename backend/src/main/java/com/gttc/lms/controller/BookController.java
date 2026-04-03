@@ -5,6 +5,7 @@ import com.gttc.lms.dto.BookResponse;
 import com.gttc.lms.service.BookService;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,7 +36,7 @@ public class BookController {
     }
 
     @GetMapping("/{id}")
-    public BookResponse getBook(@PathVariable Long id) {
+    public BookResponse getBook(@PathVariable UUID id) {
         return bookService.getBook(id);
     }
 
@@ -47,13 +48,13 @@ public class BookController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public BookResponse update(@PathVariable Long id, @Valid @RequestBody BookRequest request) {
+    public BookResponse update(@PathVariable UUID id, @Valid @RequestBody BookRequest request) {
         return bookService.updateBook(id, request);
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public void delete(@PathVariable Long id) {
+    public void delete(@PathVariable UUID id) {
         bookService.deleteBook(id);
     }
 }

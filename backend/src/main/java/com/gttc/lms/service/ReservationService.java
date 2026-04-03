@@ -11,6 +11,7 @@ import com.gttc.lms.repository.ReservationRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -34,7 +35,7 @@ public class ReservationService {
     }
 
     @Transactional
-    public ReservationResponse reserveBook(User user, Long bookId) {
+    public ReservationResponse reserveBook(User user, UUID bookId) {
         validateUser(user);
         if (!user.isVerified()) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Verify your register number before reserving");
@@ -70,7 +71,7 @@ public class ReservationService {
     }
 
     @Transactional
-    public ReservationResponse cancelReservation(User user, Long reservationId) {
+    public ReservationResponse cancelReservation(User user, UUID reservationId) {
         validateUser(user);
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Reservation not found"));

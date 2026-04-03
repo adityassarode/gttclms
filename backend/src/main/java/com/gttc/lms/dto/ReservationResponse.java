@@ -2,19 +2,20 @@ package com.gttc.lms.dto;
 
 import com.gttc.lms.model.enums.ReservationStatus;
 import java.time.Instant;
+import java.util.UUID;
 
 public class ReservationResponse {
-    private Long id;
+    private UUID id;
     private BookResponse book;
     private Instant reservedAt;
     private Instant expiresAt;
     private ReservationStatus status;
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 

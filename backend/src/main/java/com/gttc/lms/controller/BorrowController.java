@@ -6,6 +6,7 @@ import com.gttc.lms.model.User;
 import com.gttc.lms.service.BorrowService;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,7 +30,7 @@ public class BorrowController {
     }
 
     @PostMapping("/{id}/return")
-    public BorrowResponse returnBook(@AuthenticationPrincipal User user, @PathVariable Long id) {
+    public BorrowResponse returnBook(@AuthenticationPrincipal User user, @PathVariable UUID id) {
         return borrowService.returnBook(user, id);
     }
 

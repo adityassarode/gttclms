@@ -1,16 +1,17 @@
 package com.gttc.lms.dto;
 
 import jakarta.validation.constraints.NotNull;
+import java.util.UUID;
 
 public class BorrowRequest {
     @NotNull
-    private Long bookId;
+    private UUID bookId;
 
-    public Long getBookId() {
+    public UUID getBookId() {
         return bookId;
     }
 
-    public void setBookId(Long bookId) {
+    public void setBookId(UUID bookId) {
         this.bookId = bookId;
     }
 }

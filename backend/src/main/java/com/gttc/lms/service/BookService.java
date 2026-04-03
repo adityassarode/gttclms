@@ -7,6 +7,7 @@ import com.gttc.lms.model.Book;
 import com.gttc.lms.repository.BookRepository;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -35,11 +36,11 @@ public class BookService {
                 .collect(Collectors.toList());
     }
 
-    public BookResponse getBook(Long id) {
+    public BookResponse getBook(UUID id) {
         return DtoMapper.toBook(findBook(id));
     }
 
-    public Book findBook(Long id) {
+    public Book findBook(UUID id) {
         return bookRepository.findById(id)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Book not found"));
     }
@@ -59,7 +60,7 @@ public class BookService {
         return DtoMapper.toBook(book);
     }
 
-    public BookResponse updateBook(Long id, BookRequest request) {
+    public BookResponse updateBook(UUID id, BookRequest request) {
         Book book = findBook(id);
         book.setTitle(request.getTitle());
         book.setAuthor(request.getAuthor());
@@ -81,7 +82,7 @@ public class BookService {
         return DtoMapper.toBook(book);
     }
 
-    public void deleteBook(Long id) {
+    public void deleteBook(UUID id) {
         Book book = findBook(id);
         bookRepository.delete(book);
     }

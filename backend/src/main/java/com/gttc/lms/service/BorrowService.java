@@ -13,6 +13,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -34,7 +35,7 @@ public class BorrowService {
     }
 
     @Transactional
-    public BorrowResponse borrowBook(User user, Long bookId) {
+    public BorrowResponse borrowBook(User user, UUID bookId) {
         validateUser(user);
         if (!user.isVerified()) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Verify your register number before borrowing");
@@ -61,7 +62,7 @@ public class BorrowService {
     }
 
     @Transactional
-    public BorrowResponse returnBook(User user, Long borrowId) {
+    public BorrowResponse returnBook(User user, UUID borrowId) {
         validateUser(user);
         Borrow borrow = borrowRepository.findById(borrowId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Borrow record not found"));

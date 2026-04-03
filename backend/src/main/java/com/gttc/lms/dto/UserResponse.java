@@ -2,9 +2,10 @@ package com.gttc.lms.dto;
 
 import com.gttc.lms.model.enums.Role;
 import com.gttc.lms.model.enums.UserStatus;
+import java.util.UUID;
 
 public class UserResponse {
-    private Long id;
+    private UUID id;
     private String email;
     private String name;
     private String phone;
@@ -16,11 +17,11 @@ public class UserResponse {
     private UserStatus status;
     private boolean verified;
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 

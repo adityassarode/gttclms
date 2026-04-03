@@ -1,9 +1,10 @@
 package com.gttc.lms.dto;
 
 import java.time.Instant;
+import java.util.UUID;
 
 public class DonationResponse {
-    private Long id;
+    private UUID id;
     private String title;
     private String author;
     private String description;
@@ -13,11 +14,11 @@ public class DonationResponse {
     private String donorName;
     private Instant createdAt;
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 

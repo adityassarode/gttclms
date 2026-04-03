@@ -3,9 +3,10 @@ package com.gttc.lms.repository;
 import com.gttc.lms.model.User;
 import com.gttc.lms.model.enums.AuthProvider;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface UserRepository extends JpaRepository<User, Long> {
+public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmail(String email);
 
     Optional<User> findByRegisterNumber(String registerNumber);

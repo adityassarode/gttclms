@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -47,7 +48,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
             if (shouldHandleLocally) {
                 try {
-                    Long userId = jwtService.parseUserId(token);
+                    UUID userId = jwtService.parseUserId(token);
                     userRepository.findById(userId).ifPresent(user -> {
                         if (user.getStatus() == UserStatus.BANNED) {
                             return;

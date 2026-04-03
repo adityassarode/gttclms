@@ -11,6 +11,7 @@ import com.gttc.lms.service.AuthService;
 import com.gttc.lms.service.DtoMapper;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -70,7 +71,7 @@ public class UserController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public void remove(@PathVariable Long id) {
+    public void remove(@PathVariable UUID id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found"));
         userRepository.delete(user);
