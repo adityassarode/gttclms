@@ -5,8 +5,6 @@ import Link from "next/link";
 import {
   Users,
   BookOpen,
-  Clock,
-  TrendingUp,
   ArrowUpRight,
   BookMarked,
   Gift,

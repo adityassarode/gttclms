@@ -103,7 +103,8 @@ function FavoriteCard({
                   <AlertDialogHeader>
                     <AlertDialogTitle>Remove from favorites?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This removes "{book.title}" from your favorites list.
+                      This removes &quot;{book.title}&quot; from your favorites
+                      list.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>

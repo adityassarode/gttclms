@@ -95,6 +95,7 @@ export function useRequireLoginAction() {
   const pathname = usePathname();
   const router = useRouter();
   const { isAuthenticated, isReady, user } = useAuth();
+  const needsVerification = user?.role === "USER" && !user.verified;
 
   return React.useCallback(
     (redirectPath?: string) => {
@@ -109,13 +110,13 @@ export function useRequireLoginAction() {
         return false;
       }
 
-      if (user?.role === "USER" && !user.verified) {
+      if (needsVerification) {
         router.push(verifyPath(target));
         return false;
       }
 
       return true;
     },
-    [isAuthenticated, isReady, pathname, router, user?.role, user?.verified],
+    [isAuthenticated, isReady, needsVerification, pathname, router],
   );
 }

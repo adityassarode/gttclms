@@ -6,7 +6,6 @@ import Image from "next/image";
 import {
   BookMarked,
   Clock,
-  AlertTriangle,
   RotateCcw,
   BookOpen,
   ArrowRight,

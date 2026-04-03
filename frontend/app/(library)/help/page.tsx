@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import {
   HelpCircle,
   BookOpen,
@@ -9,11 +8,9 @@ import {
   Mail,
   Phone,
   MapPin,
-  ChevronDown,
   ExternalLink,
   MessageCircle,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Card,
