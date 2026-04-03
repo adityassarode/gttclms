@@ -103,13 +103,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signInWithGoogle = React.useCallback(async (redirectTo?: string) => {
-    const target = normalizeRedirectPath(redirectTo);
-    const callbackUrl =
-      typeof window !== "undefined"
-        ? `${window.location.origin}/login?redirect=${encodeURIComponent(target)}`
-        : undefined;
+    const targetPath = normalizeRedirectPath(redirectTo);
+    const callbackUrl = `${window.location.origin}/login?redirect=${encodeURIComponent(targetPath)}`;
 
-    // Clear any stale local token before OAuth redirect.
     setStoredAuthToken(null);
 
     const { error } = await supabase.auth.signInWithOAuth({

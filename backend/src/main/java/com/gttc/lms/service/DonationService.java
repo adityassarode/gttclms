@@ -24,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class DonationService {
     private static final long MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+    private static final int MAX_COPIES = 20;
 
     private final DonationRepository donationRepository;
     private final EmailService emailService;
@@ -34,9 +35,10 @@ public class DonationService {
                            @Value("${app.storage.uploadDir}") String uploadDir) {
         this.donationRepository = donationRepository;
         this.emailService = emailService;
-        this.uploadDir = Paths.get(uploadDir);
+        this.uploadDir = Paths.get(uploadDir).toAbsolutePath().normalize();
     }
 
+    @Transactional
     public DonationResponse donate(User user,
                                    String title,
                                    String author,
@@ -45,6 +47,12 @@ public class DonationService {
                                    MultipartFile image1,
                                    MultipartFile image2) {
         validateUser(user);
+        validateDonationRequest(title, author, copies);
+
+        String sanitizedTitle = title.trim();
+        String sanitizedAuthor = author.trim();
+        String sanitizedDescription = description == null ? null : description.trim();
+
         if (image1 != null && image1.getSize() > MAX_IMAGE_BYTES) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Image 1 exceeds 2MB");
         }
@@ -53,9 +61,9 @@ public class DonationService {
         }
         Donation donation = new Donation();
         donation.setUser(user);
-        donation.setTitle(title);
-        donation.setAuthor(author);
-        donation.setDescription(description);
+        donation.setTitle(sanitizedTitle);
+        donation.setAuthor(sanitizedAuthor);
+        donation.setDescription(sanitizedDescription);
         donation.setCopies(copies);
         donation.setImage1(storeImage(image1));
         donation.setImage2(storeImage(image2));
@@ -67,7 +75,7 @@ public class DonationService {
 
     @Transactional(readOnly = true)
     public List<DonationResponse> listAll() {
-        return donationRepository.findAll().stream()
+        return donationRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(DtoMapper::toDonation)
                 .collect(Collectors.toList());
     }
@@ -87,12 +95,12 @@ public class DonationService {
         }
         try {
             Files.createDirectories(uploadDir);
-            String original = file.getOriginalFilename();
-            if (original == null || original.isBlank()) {
-                original = "image";
-            }
+            String original = sanitizeFilename(file.getOriginalFilename());
             String filename = Instant.now().toEpochMilli() + "-" + UUID.randomUUID() + "-" + original;
-            Path destination = uploadDir.resolve(filename);
+            Path destination = uploadDir.resolve(filename).normalize();
+            if (!destination.startsWith(uploadDir)) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid image file name");
+            }
             Files.copy(file.getInputStream(), destination, StandardCopyOption.REPLACE_EXISTING);
             return "/uploads/" + filename;
         } catch (IOException ex) {
@@ -100,7 +108,40 @@ public class DonationService {
         }
     }
 
+    private String sanitizeFilename(String originalFilename) {
+        if (originalFilename == null || originalFilename.isBlank()) {
+            return "image";
+        }
+
+        String cleaned = Paths.get(originalFilename).getFileName().toString().trim();
+        cleaned = cleaned.replaceAll("\\\\", "_");
+        cleaned = cleaned.replaceAll("/", "_");
+        cleaned = cleaned.replaceAll("\\s+", "_");
+        cleaned = cleaned.replaceAll("[^a-zA-Z0-9._-]", "");
+
+        if (cleaned.isBlank()) {
+            return "image";
+        }
+
+        return cleaned;
+    }
+
+    private void validateDonationRequest(String title, String author, int copies) {
+        if (title == null || title.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Title is required");
+        }
+        if (author == null || author.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Author is required");
+        }
+        if (copies < 1 || copies > MAX_COPIES) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Copies must be between 1 and 20");
+        }
+    }
+
     private void validateUser(User user) {
+        if (user == null) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
         if (user.getStatus() == UserStatus.BANNED) {
             throw new ApiException(HttpStatus.FORBIDDEN, "User is banned");
         }

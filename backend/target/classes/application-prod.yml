@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/gttc_lms}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://db.rtfxnjhmvzpwaknakwcj.supabase.co:5432/postgres}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
     driverClassName: org.postgresql.Driver
   jpa:
     hibernate:

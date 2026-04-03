@@ -3,35 +3,56 @@ services:
     name: gttclms-backend
     runtime: java
     rootDir: backend
+
     buildCommand: mvn clean package -DskipTests
     startCommand: java -jar target/gttc-lms-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
-    healthCheckPath: /health
+
+    healthCheckPath: /actuator/health
+
     envVars:
       - key: JAVA_VERSION
         value: "17"
+
       - key: SPRING_PROFILES_ACTIVE
         value: "prod"
+
+      # Frontend URLs (CORS)
       - key: APP_FRONTEND_URLS
-        sync: false
+        value: http://localhost:3000,https://gttclms.netlify.app
+
+      # Supabase JWT
       - key: SUPABASE_ISSUER_URI
-        sync: false
+        value: https://rtfxnjhmvzpwaknakwcj.supabase.co/auth/v1
+
+      # Database (Supabase PostgreSQL)
       - key: SPRING_DATASOURCE_URL
-        sync: false
+        value: jdbc:postgresql://db.rtfxnjhmvzpwaknakwcj.supabase.co:5432/postgres
+
       - key: SPRING_DATASOURCE_USERNAME
-        sync: false
+        value: postgres
+
       - key: SPRING_DATASOURCE_PASSWORD
-        sync: false
+        sync: false   # keep secret
+
+      # Admin bootstrap (optional)
       - key: APP_ADMIN_BOOTSTRAP_EMAIL
-        sync: false
+        value: ""
+
+      # Mail config
       - key: MAIL_HOST
-        sync: false
+        value: smtp.gmail.com
+
       - key: MAIL_PORT
         value: "587"
+
       - key: MAIL_USERNAME
-        sync: false
+        value: gttclmss@gmail.com
+
       - key: MAIL_PASSWORD
-        sync: false
+        sync: false   # keep secret
+
       - key: APP_MAIL_FROM
-        sync: false
+        value: gttclmss@gmail.com
+
       - key: APP_MAIL_MODE
-        value: "smtp"
+        value: smtp

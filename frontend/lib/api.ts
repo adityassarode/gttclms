@@ -104,6 +104,29 @@ function extractApiMessage(payload: unknown, fallback: string) {
   return fallback;
 }
 
+async function getActiveAuthToken() {
+  const storedToken = getStoredAuthToken();
+  if (storedToken || !isBrowser()) {
+    return storedToken;
+  }
+
+  try {
+    const { supabase } = await import("@/lib/supabase");
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+      return null;
+    }
+
+    const sessionToken = data.session?.access_token ?? null;
+    if (sessionToken) {
+      setStoredAuthToken(sessionToken);
+    }
+    return sessionToken;
+  } catch {
+    return null;
+  }
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
@@ -111,7 +134,7 @@ async function request<T>(
   params?: Record<string, unknown>,
 ): Promise<T> {
   const headers = new Headers(options.headers);
-  const token = getStoredAuthToken();
+  const token = await getActiveAuthToken();
   const isFormBody =
     typeof FormData !== "undefined" && options.body instanceof FormData;
 

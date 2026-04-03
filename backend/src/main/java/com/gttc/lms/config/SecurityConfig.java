@@ -4,9 +4,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -31,17 +31,17 @@ public class SecurityConfig {
     private final String frontendUrls;
 
     public SecurityConfig(
-        JwtAuthFilter jwtAuthFilter,
-        SupabaseUserFilter supabaseUserFilter,
-        AppBearerTokenResolver appBearerTokenResolver,
-        @Value("${app.frontendUrl}") String frontendUrl,
-        @Value("${app.frontendUrls:}") String frontendUrls
+            JwtAuthFilter jwtAuthFilter,
+            SupabaseUserFilter supabaseUserFilter,
+            AppBearerTokenResolver appBearerTokenResolver,
+            @Value("${app.frontendUrl:}") String frontendUrl,
+            @Value("${app.frontendUrls:}") String frontendUrls
     ) {
         this.jwtAuthFilter = jwtAuthFilter;
-    this.supabaseUserFilter = supabaseUserFilter;
-    this.appBearerTokenResolver = appBearerTokenResolver;
+        this.supabaseUserFilter = supabaseUserFilter;
+        this.appBearerTokenResolver = appBearerTokenResolver;
         this.frontendUrl = frontendUrl;
-    this.frontendUrls = frontendUrls;
+        this.frontendUrls = frontendUrls;
     }
 
     @Bean
@@ -50,22 +50,22 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .oauth2ResourceServer(oauth2 -> oauth2
-            .bearerTokenResolver(appBearerTokenResolver)
-            .jwt(Customizer.withDefaults())
-        )
+                .oauth2ResourceServer(oauth2 -> oauth2
+                    .bearerTokenResolver(appBearerTokenResolver)
+                    .jwt(Customizer.withDefaults())
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**", "/api/admin/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/books/**").permitAll()
-            .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()))
-        .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-        .addFilterAfter(supabaseUserFilter, BearerTokenAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(supabaseUserFilter, BearerTokenAuthenticationFilter.class);
         return http.build();
     }
 
@@ -95,9 +95,7 @@ public class SecurityConfig {
         }
 
         addOrigin(origins, "http://localhost:3000");
-        addOrigin(origins, "http://127.0.0.1:3000");
-        addOrigin(origins, "http://localhost:5173");
-        addOrigin(origins, "http://127.0.0.1:5173");
+        addOrigin(origins, "https://gttclms.netlify.app");
 
         return new ArrayList<>(origins);
     }

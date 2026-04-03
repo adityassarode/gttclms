@@ -100,6 +100,9 @@ public class BorrowService {
     }
 
     private void validateUser(User user) {
+        if (user == null) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
         if (user.getStatus() == UserStatus.BANNED) {
             throw new ApiException(HttpStatus.FORBIDDEN, "User is banned");
         }
