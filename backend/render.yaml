@@ -18,7 +18,7 @@ services:
 
       # Frontend URLs (CORS)
       - key: APP_FRONTEND_URLS
-        value: http://localhost:3000,https://gttclms.netlify.app
+        value: http://localhost:3000,https://gttclms.vercel.app
 
       # Supabase JWT
       - key: SUPABASE_ISSUER_URI

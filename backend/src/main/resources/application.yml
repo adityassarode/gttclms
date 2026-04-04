@@ -48,7 +48,7 @@ app:
     issuer: gttc-lms
     expiryMinutes: 480
 
-  frontendUrls: ${APP_FRONTEND_URLS:https://gttclms.netlify.app}
+  frontendUrls: ${APP_FRONTEND_URLS:https://gttclms.vercel.app}
 
   admin:
     username: ${APP_ADMIN_USERNAME:admin}

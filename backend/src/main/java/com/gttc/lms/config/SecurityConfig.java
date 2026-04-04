@@ -52,6 +52,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                    .requestMatchers("/health").permitAll()
                         .requestMatchers("/api/auth/**", "/api/admin/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/books/**").permitAll()
                     .requestMatchers("/api/students/**").permitAll()
@@ -90,7 +91,8 @@ public class SecurityConfig {
             addOrigin(origins, origin);
         }
 
-        addOrigin(origins, "https://gttclms.netlify.app");
+        addOrigin(origins, "http://localhost:3000");
+        addOrigin(origins, "https://gttclms.vercel.app");
 
         return new ArrayList<>(origins);
     }

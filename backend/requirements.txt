@@ -10,7 +10,7 @@ Required environment variables
 - SPRING_DATASOURCE_USERNAME=postgres
 - SPRING_DATASOURCE_PASSWORD=Aditya@#2509
 
-- APP_FRONTEND_URLS=http://localhost:3000,https://gttclms.netlify.app
+- APP_FRONTEND_URLS=http://localhost:3000,https://gttclms.vercel.app
 
 # Optional admin auto setup
 - APP_ADMIN_BOOTSTRAP_EMAIL=adityassarode.work@gmail.com
