@@ -11,6 +11,7 @@
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/service/BorrowService.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/dto/UserResponse.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/service/ReservationService.java
+/workspaces/gttclms/backend/src/main/java/com/gttc/lms/config/SecurityErrorHandlersConfig.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/dto/BorrowRequest.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/config/AppBearerTokenResolver.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/GttcLmsApplication.java

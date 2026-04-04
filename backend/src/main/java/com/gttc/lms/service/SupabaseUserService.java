@@ -51,6 +51,8 @@ public class SupabaseUserService {
 
         User user = byProviderId.or(() -> byEmail).orElseGet(User::new);
         boolean isNew = user.getId() == null;
+        boolean bootstrapAdmin = !bootstrapAdminEmail.isBlank()
+            && bootstrapAdminEmail.equalsIgnoreCase(email);
 
         user.setProvider(AuthProvider.SUPABASE);
         user.setProviderId(subject);
@@ -66,10 +68,10 @@ public class SupabaseUserService {
             user.setPhone(phone);
         }
 
-        if (user.getRole() == null) {
-            boolean bootstrapAdmin = !bootstrapAdminEmail.isBlank()
-                    && bootstrapAdminEmail.equalsIgnoreCase(email);
-            user.setRole(bootstrapAdmin ? Role.ADMIN : Role.USER);
+        if (bootstrapAdmin && user.getRole() != Role.ADMIN) {
+            user.setRole(Role.ADMIN);
+        } else if (user.getRole() == null) {
+            user.setRole(Role.USER);
         }
 
         if (user.getStatus() == null) {

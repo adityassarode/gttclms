@@ -13,7 +13,12 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
 app:
+  admin:
+    bootstrapEmail: ${APP_ADMIN_BOOTSTRAP_EMAIL:}
   google:
     allowTestToken: false
   mail:
-    mode: smtp
+    mode: ${APP_MAIL_MODE:resend}
+    from: ${APP_MAIL_FROM:onboarding@resend.dev}
+    resend:
+      apiKey: ${APP_RESEND_API_KEY:}

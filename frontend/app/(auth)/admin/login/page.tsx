@@ -11,9 +11,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
-import { setStoredAuthToken } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { supabase } from "@/lib/supabase";
 import { getErrorMessage } from "@/lib/ui-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,61 +25,14 @@ import {
 } from "@/components/ui/card";
 
 export default function AdminLoginPage() {
-  const {
-    signInWithPassword,
-    signInWithAdminCredentials,
-    logout,
-    user,
-    isReady,
-  } = useAuth();
+  const { signInWithAdminCredentials, logout, user, isReady } = useAuth();
 
-  const [loading, setLoading] = React.useState(true);
-  const [hasSession, setHasSession] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [form, setForm] = React.useState({ username: "", password: "" });
 
   React.useEffect(() => {
-    let cancelled = false;
-
-    const handleAuth = async () => {
-      try {
-        const { data } = await supabase.auth.getSession();
-        const session = data.session;
-
-        if (!cancelled) {
-          setHasSession(Boolean(session));
-        }
-
-        const token = session?.access_token || null;
-        if (token) {
-          setStoredAuthToken(token);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
-    handleAuth();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  React.useEffect(() => {
-    if (loading || !isReady) {
-      return;
-    }
-
-    if (!hasSession && !user) {
-      return;
-    }
-
-    if (!user) {
-      window.location.href = "/admin";
+    if (!isReady || !user) {
       return;
     }
 
@@ -91,26 +42,28 @@ export default function AdminLoginPage() {
     }
 
     window.location.href = "/";
-  }, [loading, isReady, hasSession, user]);
-
-  if (loading || !isReady) {
-    return null;
-  }
+  }, [isReady, user]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
     if (!form.username || !form.password) {
-      toast.error("Username and password are required");
+      toast.error("Admin email and password are required");
+      return;
+    }
+
+    if (!form.username.includes("@")) {
+      toast.error("Use your admin email address");
       return;
     }
 
     setIsLoading(true);
     try {
       const identifier = form.username.trim();
-      const profile = identifier.includes("@")
-        ? await signInWithPassword(identifier, form.password)
-        : await signInWithAdminCredentials(identifier, form.password);
+      const profile = await signInWithAdminCredentials(
+        identifier,
+        form.password,
+      );
 
       if (!profile) {
         toast.error(
@@ -149,17 +102,17 @@ export default function AdminLoginPage() {
       <CardContent className="px-4 pb-5 sm:px-6 sm:pb-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="username">Username or Email</Label>
+            <Label htmlFor="username">Admin Email</Label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="username"
-                type="text"
+                type="email"
                 value={form.username}
                 onChange={(event) =>
                   setForm({ ...form, username: event.target.value })
                 }
-                placeholder="Aditya Sarode"
+                placeholder="admin@gttc.edu"
                 className="h-11 rounded-xl pl-10"
                 required
               />

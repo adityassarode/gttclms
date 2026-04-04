@@ -111,7 +111,18 @@ function VerifyPageContent() {
   };
 
   if (!isReady) {
-    return null;
+    return (
+      <Card className="w-full max-w-lg overflow-hidden border-border/50 shadow-xl shadow-primary/5">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-bold">
+            Checking session...
+          </CardTitle>
+          <CardDescription>
+            Please wait while we load your account.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
   }
 
   if (!user) {

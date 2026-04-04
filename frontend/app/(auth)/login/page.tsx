@@ -13,9 +13,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { setStoredAuthToken } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { supabase } from "@/lib/supabase";
 import { getErrorMessage } from "@/lib/ui-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,7 +49,6 @@ function LoginPageContent() {
   const searchParams = useSearchParams();
   const {
     signInWithPassword,
-    signInWithAdminCredentials,
     signUpWithPassword,
     signInWithGoogle,
     user,
@@ -59,8 +56,6 @@ function LoginPageContent() {
   } = useAuth();
 
   const [mode, setMode] = React.useState<"login" | "register">("login");
-  const [loading, setLoading] = React.useState(true);
-  const [hasSession, setHasSession] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
 
@@ -87,58 +82,11 @@ function LoginPageContent() {
   }, [searchParams]);
 
   React.useEffect(() => {
-    let cancelled = false;
-
-    const handleAuth = async () => {
-      try {
-        const { data } = await supabase.auth.getSession();
-        const session = data.session;
-        const token = session?.access_token || null;
-
-        if (!cancelled) {
-          setHasSession(Boolean(session));
-        }
-
-        if (token) {
-          setStoredAuthToken(token);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
-    handleAuth();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  React.useEffect(() => {
-    if (loading || !isReady) {
-      return;
-    }
-
-    if (!hasSession && !user) {
+    if (!isReady || !user) {
       return;
     }
 
     const redirectTo = resolveRedirectTarget();
-
-    if (!user) {
-      // wait for backend user load
-      const timeoutId = window.setTimeout(() => {
-        if (!user) {
-          window.location.reload();
-        }
-      }, 2000);
-
-      return () => {
-        window.clearTimeout(timeoutId);
-      };
-    }
 
     try {
       window.sessionStorage.removeItem(OAUTH_REDIRECT_KEY);
@@ -152,7 +100,7 @@ function LoginPageContent() {
     }
 
     window.location.href = redirectTo;
-  }, [loading, isReady, hasSession, resolveRedirectTarget, user]);
+  }, [isReady, resolveRedirectTarget, user]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -160,7 +108,7 @@ function LoginPageContent() {
     if (!form.email || !form.password) {
       toast.error(
         mode === "login"
-          ? "Username/Email and password are required"
+          ? "Email and password are required"
           : "Email and password are required",
       );
       return;
@@ -175,11 +123,15 @@ function LoginPageContent() {
     try {
       const redirectTo = resolveRedirectTarget();
       const identifier = form.email.trim();
+
+      if (mode === "login" && !identifier.includes("@")) {
+        toast.error("Use your email address to sign in");
+        return;
+      }
+
       const profile =
         mode === "login"
-          ? identifier.includes("@")
-            ? await signInWithPassword(identifier, form.password)
-            : await signInWithAdminCredentials(identifier, form.password)
+          ? await signInWithPassword(identifier, form.password)
           : await signUpWithPassword({
               email: identifier,
               password: form.password,
@@ -234,7 +186,6 @@ function LoginPageContent() {
       // needed on failure paths.
     }
   };
-  if (loading || !isReady) return null;
   return (
     <Card className="w-full max-w-md overflow-hidden border-border/50 shadow-xl shadow-primary/5">
       <CardHeader className="px-4 pb-2 pt-5 text-center sm:px-6 sm:pt-6">
@@ -327,21 +278,17 @@ function LoginPageContent() {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="email">
-              {mode === "login" ? "Username or Email" : "Email Address"}
-            </Label>
+            <Label htmlFor="email">Email Address</Label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="email"
-                type={mode === "login" ? "text" : "email"}
+                type="email"
                 value={form.email}
                 onChange={(event) =>
                   setForm({ ...form, email: event.target.value })
                 }
-                placeholder={
-                  mode === "login" ? "Aditya Sarode" : "you@gttc.edu"
-                }
+                placeholder="you@gttc.edu"
                 className="h-11 rounded-xl pl-10"
                 required
               />

@@ -18,51 +18,62 @@ import type {
   User,
   VerifyStudentPayload,
 } from "@/lib/types";
+import { supabase } from "@/lib/supabase";
 
-const AUTH_TOKEN_KEY = "gttc_lms_auth_token";
-const LEGACY_AUTH_TOKEN_KEY = "token";
+const REQUEST_TIMEOUT_MS = 15000;
+let authRedirectInProgress = false;
 
-const DEFAULT_API_BASE_URL =
+const CLOUD_API_BASE_URL =
   "https://gttclms-bvcyaudmh0ecebg5.centralindia-01.azurewebsites.net";
+const LOCAL_API_BASE_URL = "http://localhost:8080";
+
+function isBrowser() {
+  return typeof window !== "undefined";
+}
+
+function isLocalDevelopmentHost(hostname: string) {
+  const normalized = hostname.toLowerCase();
+  return (
+    normalized === "localhost" ||
+    normalized === "127.0.0.1" ||
+    normalized.endsWith(".github.dev") ||
+    normalized.endsWith(".app.github.dev")
+  );
+}
+
+function getDefaultApiBaseUrl() {
+  if (!isBrowser()) {
+    return CLOUD_API_BASE_URL;
+  }
+
+  return isLocalDevelopmentHost(window.location.hostname)
+    ? LOCAL_API_BASE_URL
+    : CLOUD_API_BASE_URL;
+}
 
 const RAW_API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_API_BASE_URL ||
-  DEFAULT_API_BASE_URL;
-
-const KNOWN_FRONTEND_HOSTS = new Set(["gttclms.vercel.app"]);
+  getDefaultApiBaseUrl();
 
 function normalizeApiBaseUrl(rawValue: string) {
   const value = rawValue.trim().replace(/^['"]|['"]$/g, "");
 
   if (!value || value.startsWith("/") || value.startsWith(".")) {
-    return DEFAULT_API_BASE_URL;
+    return getDefaultApiBaseUrl();
   }
 
   const candidate = /^https?:\/\//i.test(value) ? value : `https://${value}`;
 
   try {
     const parsed = new URL(candidate);
-
-    if (KNOWN_FRONTEND_HOSTS.has(parsed.hostname.toLowerCase())) {
-      return DEFAULT_API_BASE_URL;
-    }
-
-    if (isBrowser() && parsed.host === window.location.host) {
-      return DEFAULT_API_BASE_URL;
-    }
-
     return `${parsed.protocol}//${parsed.host}`.replace(/\/$/, "");
   } catch {
-    return DEFAULT_API_BASE_URL;
+    return getDefaultApiBaseUrl();
   }
 }
 
 const API_BASE_URL = normalizeApiBaseUrl(RAW_API_BASE_URL);
-
-function isBrowser() {
-  return typeof window !== "undefined";
-}
 
 function getResolvedBaseUrl() {
   if (/^https?:\/\//i.test(API_BASE_URL)) {
@@ -73,12 +84,54 @@ function getResolvedBaseUrl() {
     return new URL(API_BASE_URL, window.location.origin).toString();
   }
 
-  return DEFAULT_API_BASE_URL;
+  return getDefaultApiBaseUrl();
 }
 
 function getApiOrigin() {
   const url = new URL(getResolvedBaseUrl());
   return `${url.protocol}//${url.host}`;
+}
+
+function buildAuthLoginPath() {
+  if (!isBrowser()) {
+    return "/login";
+  }
+
+  return window.location.pathname.startsWith("/admin")
+    ? "/admin/login"
+    : "/login";
+}
+
+function getCurrentRedirectTarget() {
+  if (!isBrowser()) {
+    return "/";
+  }
+
+  return `${window.location.pathname}${window.location.search}`;
+}
+
+function redirectToLoginIfNeeded() {
+  if (!isBrowser()) {
+    return false;
+  }
+
+  const currentPath = window.location.pathname;
+  if (
+    currentPath.startsWith("/login") ||
+    currentPath.startsWith("/admin/login")
+  ) {
+    return false;
+  }
+
+  if (authRedirectInProgress) {
+    return true;
+  }
+
+  authRedirectInProgress = true;
+  const loginPath = buildAuthLoginPath();
+  const redirectTarget = encodeURIComponent(getCurrentRedirectTarget());
+  window.location.replace(`${loginPath}?redirect=${redirectTarget}`);
+  return true;
 }
 
 function buildUrl(path: string, params?: Record<string, unknown>) {
@@ -142,23 +195,12 @@ function extractApiMessage(payload: unknown, fallback: string) {
 }
 
 async function getActiveAuthToken() {
-  const storedToken = getStoredAuthToken();
-  if (storedToken || !isBrowser()) {
-    return storedToken;
-  }
-
   try {
-    const { supabase } = await import("@/lib/supabase");
     const { data, error } = await supabase.auth.getSession();
     if (error) {
       return null;
     }
-
-    const sessionToken = data.session?.access_token ?? null;
-    if (sessionToken) {
-      setStoredAuthToken(sessionToken);
-    }
-    return sessionToken;
+    return data.session?.access_token ?? null;
   } catch {
     return null;
   }
@@ -170,24 +212,76 @@ async function request<T>(
   fallbackMessage = "Request failed",
   params?: Record<string, unknown>,
   includeAuth = true,
+  authTokenOverride?: string | null,
 ): Promise<T> {
   const headers = new Headers(options.headers);
-  const token = includeAuth ? await getActiveAuthToken() : null;
+  const token = includeAuth
+    ? (authTokenOverride ?? (await getActiveAuthToken()))
+    : null;
+
+  if (includeAuth && !token) {
+    if (redirectToLoginIfNeeded()) {
+      return new Promise<T>(() => {});
+    }
+
+    throw new Error("Authentication required");
+  }
+
   const isFormBody =
     typeof FormData !== "undefined" && options.body instanceof FormData;
 
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
+  const send = async (activeToken: string | null) => {
+    const requestHeaders = new Headers(headers);
+
+    if (activeToken) {
+      requestHeaders.set("Authorization", `Bearer ${activeToken}`);
+    }
+
+    if (!isFormBody && options.body && !requestHeaders.has("Content-Type")) {
+      requestHeaders.set("Content-Type", "application/json");
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    try {
+      return await fetch(buildUrl(path, params), {
+        ...options,
+        headers: requestHeaders,
+        signal: options.signal || controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  };
+
+  let response: Response;
+
+  try {
+    response = await send(token);
+  } catch (error) {
+    const isAbortError =
+      error instanceof DOMException && error.name === "AbortError";
+    if (isAbortError) {
+      throw new Error(`${fallbackMessage} (timeout)`);
+    }
+    throw new Error(fallbackMessage);
   }
 
-  if (!isFormBody && options.body && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
-  }
+  if (includeAuth && response.status === 401 && !authTokenOverride) {
+    try {
+      const { data, error } = await supabase.auth.refreshSession();
+      const refreshedToken = error
+        ? null
+        : (data.session?.access_token ?? null);
 
-  const response = await fetch(buildUrl(path, params), {
-    ...options,
-    headers,
-  });
+      if (refreshedToken) {
+        response = await send(refreshedToken);
+      }
+    } catch {
+      // keep original 401 response when refresh fails
+    }
+  }
 
   const raw = await response.text();
   let payload: unknown = undefined;
@@ -201,6 +295,18 @@ async function request<T>(
   }
 
   if (!response.ok) {
+    if (includeAuth && response.status === 401) {
+      if (redirectToLoginIfNeeded()) {
+        return new Promise<T>(() => {});
+      }
+
+      throw new Error("Session expired. Please login again.");
+    }
+
+    if (includeAuth && response.status === 403) {
+      throw new Error(extractApiMessage(payload, "Access denied"));
+    }
+
     throw new Error(
       extractApiMessage(
         payload,
@@ -257,31 +363,6 @@ function normalizeDonationPayload(payload: DonationSubmitPayload) {
   return formData;
 }
 
-export function getStoredAuthToken() {
-  if (!isBrowser()) {
-    return null;
-  }
-  return (
-    localStorage.getItem(AUTH_TOKEN_KEY) ||
-    localStorage.getItem(LEGACY_AUTH_TOKEN_KEY)
-  );
-}
-
-export function setStoredAuthToken(token: string | null) {
-  if (!isBrowser()) {
-    return;
-  }
-
-  if (!token) {
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-    localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY);
-    return;
-  }
-
-  localStorage.setItem(AUTH_TOKEN_KEY, token);
-  localStorage.setItem(LEGACY_AUTH_TOKEN_KEY, token);
-}
-
 export const api = {
   register(payload: RegisterPayload) {
     return request<AuthResponse>(
@@ -291,6 +372,8 @@ export const api = {
         body: JSON.stringify(payload),
       },
       "Unable to register",
+      undefined,
+      false,
     );
   },
 
@@ -302,6 +385,8 @@ export const api = {
         body: JSON.stringify(payload),
       },
       "Unable to login",
+      undefined,
+      false,
     );
   },
 
@@ -313,6 +398,8 @@ export const api = {
         body: JSON.stringify(payload),
       },
       "Unable to login as admin",
+      undefined,
+      false,
     );
   },
 
@@ -327,11 +414,20 @@ export const api = {
         body: JSON.stringify(payload),
       },
       "Unable to login with Google",
+      undefined,
+      false,
     );
   },
 
-  getMe() {
-    return request<User>("/api/users/me", {}, "Unable to load profile");
+  getMe(authTokenOverride?: string | null) {
+    return request<User>(
+      "/api/users/me",
+      {},
+      "Unable to load profile",
+      undefined,
+      true,
+      authTokenOverride,
+    );
   },
 
   getBooks(params?: { q?: string; category?: string; featured?: boolean }) {
@@ -345,7 +441,13 @@ export const api = {
   },
 
   getBook(id: string | number) {
-    return request<Book>(`/api/books/${id}`, {}, "Unable to load book");
+    return request<Book>(
+      `/api/books/${id}`,
+      {},
+      "Unable to load book",
+      undefined,
+      false,
+    );
   },
 
   createBook(payload: BookUpsertPayload) {
@@ -356,8 +458,6 @@ export const api = {
         body: JSON.stringify(normalizeBookPayload(payload)),
       },
       "Unable to create book",
-      undefined,
-      false,
     );
   },
 
@@ -369,8 +469,6 @@ export const api = {
         body: JSON.stringify(normalizeBookPayload(payload)),
       },
       "Unable to update book",
-      undefined,
-      false,
     );
   },
 
@@ -381,8 +479,6 @@ export const api = {
         method: "DELETE",
       },
       "Unable to delete book",
-      undefined,
-      false,
     );
   },
 
@@ -508,19 +604,11 @@ export const api = {
       "/api/admin/analytics",
       {},
       "Unable to load analytics",
-      undefined,
-      false,
     );
   },
 
   getAdminUsers() {
-    return request<User[]>(
-      "/api/users",
-      {},
-      "Unable to load users",
-      undefined,
-      false,
-    );
+    return request<User[]>("/api/users", {}, "Unable to load users");
   },
 
   addStudent(payload: StudentRequestPayload) {
@@ -531,8 +619,6 @@ export const api = {
         body: JSON.stringify(payload),
       },
       "Unable to add student",
-      undefined,
-      false,
     );
   },
 
@@ -547,8 +633,6 @@ export const api = {
         body: formData,
       },
       "Unable to upload students",
-      undefined,
-      false,
     );
   },
 
@@ -560,8 +644,6 @@ export const api = {
         body: JSON.stringify(payload),
       },
       "Unable to ban user",
-      undefined,
-      false,
     );
   },
 
@@ -572,8 +654,6 @@ export const api = {
         method: "DELETE",
       },
       "Unable to delete user",
-      undefined,
-      false,
     );
   },
 
@@ -595,8 +675,6 @@ export const api = {
         body: JSON.stringify(payload),
       },
       "Unable to verify student",
-      undefined,
-      false,
     );
   },
 };

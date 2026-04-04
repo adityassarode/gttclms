@@ -19,18 +19,6 @@ spring:
       ddl-auto: update
     open-in-view: false
 
-  mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:gttclmss@gmail.com}
-    password: ${MAIL_PASSWORD:}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-
   servlet:
     multipart:
       max-file-size: 2MB
@@ -53,13 +41,16 @@ app:
   admin:
     username: ${APP_ADMIN_USERNAME:admin}
     password: ${APP_ADMIN_PASSWORD:}
+    bootstrapEmail: ${APP_ADMIN_BOOTSTRAP_EMAIL:}
 
   google:
     clientId: ${APP_GOOGLE_CLIENT_ID:}
 
   mail:
-    mode: ${APP_MAIL_MODE:smtp}
-    from: ${APP_MAIL_FROM:gttclmss@gmail.com}
+    mode: ${APP_MAIL_MODE:resend}
+    from: ${APP_MAIL_FROM:onboarding@resend.dev}
+    resend:
+      apiKey: ${APP_RESEND_API_KEY:}
 
   storage:
     uploadDir: ${APP_UPLOAD_DIR:uploads}

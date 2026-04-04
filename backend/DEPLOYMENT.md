@@ -18,14 +18,11 @@ CI/CD deployment is configured via the GitHub Actions workflow in .github/workfl
 - SPRING_DATASOURCE_PASSWORD
 - APP_FRONTEND_URLS
 
-## SMTP variables (recommended for production)
+## Resend variables (recommended for production)
 
-- MAIL_HOST
-- MAIL_PORT
-- MAIL_USERNAME
-- MAIL_PASSWORD
-- APP_MAIL_FROM
-- APP_MAIL_MODE=smtp
+- APP_RESEND_API_KEY
+- APP_MAIL_FROM=onboarding@resend.dev (or a verified sender domain)
+- APP_MAIL_MODE=resend
 
 ## Supabase connectivity
 

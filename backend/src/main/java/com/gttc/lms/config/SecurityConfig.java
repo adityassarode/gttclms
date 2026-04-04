@@ -8,26 +8,46 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
     private final String frontendUrl;
     private final String frontendUrls;
+    private final AppBearerTokenResolver appBearerTokenResolver;
+    private final JwtAuthFilter jwtAuthFilter;
+    private final SupabaseUserFilter supabaseUserFilter;
+    private final AuthenticationEntryPoint authenticationEntryPoint;
+    private final AccessDeniedHandler accessDeniedHandler;
 
     public SecurityConfig(
             @Value("${app.frontendUrl:}") String frontendUrl,
-            @Value("${app.frontendUrls:}") String frontendUrls
+            @Value("${app.frontendUrls:}") String frontendUrls,
+            AppBearerTokenResolver appBearerTokenResolver,
+            JwtAuthFilter jwtAuthFilter,
+            SupabaseUserFilter supabaseUserFilter,
+            AuthenticationEntryPoint authenticationEntryPoint,
+            AccessDeniedHandler accessDeniedHandler
     ) {
         this.frontendUrl = frontendUrl;
         this.frontendUrls = frontendUrls;
+        this.appBearerTokenResolver = appBearerTokenResolver;
+        this.jwtAuthFilter = jwtAuthFilter;
+        this.supabaseUserFilter = supabaseUserFilter;
+        this.authenticationEntryPoint = authenticationEntryPoint;
+        this.accessDeniedHandler = accessDeniedHandler;
     }
 
     @Bean
@@ -37,8 +57,31 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .anyRequest().permitAll()
+                    .requestMatchers(
+                        "/",
+                        "/health",
+                        "/actuator/health",
+                        "/api/auth/**",
+                        "/api/admin/login",
+                        "/api/student",
+                        "/api/student/**",
+                        "/api/students/**"
+                    ).permitAll()
+                    .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/books/**").permitAll()
+                    .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/donations/**").permitAll()
+                    .anyRequest().authenticated()
                 )
+                .oauth2ResourceServer(oauth2 -> oauth2
+                    .bearerTokenResolver(appBearerTokenResolver)
+                    .jwt(Customizer.withDefaults())
+                    .authenticationEntryPoint(authenticationEntryPoint)
+                )
+                .exceptionHandling(ex -> ex
+                    .authenticationEntryPoint(authenticationEntryPoint)
+                    .accessDeniedHandler(accessDeniedHandler)
+                )
+                .addFilterBefore(jwtAuthFilter, BearerTokenAuthenticationFilter.class)
+                .addFilterAfter(supabaseUserFilter, BearerTokenAuthenticationFilter.class)
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()));
         return http.build();
     }

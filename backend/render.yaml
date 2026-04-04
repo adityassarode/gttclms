@@ -32,27 +32,18 @@ services:
         value: postgres
 
       - key: SPRING_DATASOURCE_PASSWORD
-        sync: false   # keep secret
+        sync: false # keep secret
 
       # Admin bootstrap (optional)
       - key: APP_ADMIN_BOOTSTRAP_EMAIL
         value: ""
 
-      # Mail config
-      - key: MAIL_HOST
-        value: smtp.gmail.com
-
-      - key: MAIL_PORT
-        value: "587"
-
-      - key: MAIL_USERNAME
-        value: gttclmss@gmail.com
-
-      - key: MAIL_PASSWORD
-        sync: false   # keep secret
-
+      # Mail config (Resend)
       - key: APP_MAIL_FROM
-        value: gttclmss@gmail.com
+        value: onboarding@resend.dev
 
       - key: APP_MAIL_MODE
-        value: smtp
+        value: resend
+
+      - key: APP_RESEND_API_KEY
+        sync: false # keep secret

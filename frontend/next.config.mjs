@@ -41,6 +41,14 @@ const nextConfig = {
         destination: `${BACKEND_API_ORIGIN}/api/students/:path*`,
       },
       {
+        source: "/api/student",
+        destination: `${BACKEND_API_ORIGIN}/api/student`,
+      },
+      {
+        source: "/api/student/:path*",
+        destination: `${BACKEND_API_ORIGIN}/api/student/:path*`,
+      },
+      {
         source: "/api/users/:path*",
         destination: `${BACKEND_API_ORIGIN}/api/users/:path*`,
       },

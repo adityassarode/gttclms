@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { api, getStoredAuthToken, setStoredAuthToken } from "@/lib/api";
+import { api } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import type { RegisterPayload, User } from "@/lib/types";
 
@@ -43,22 +43,27 @@ const defaultValue: AuthContextValue = {
 
 const AuthContext = React.createContext<AuthContextValue>(defaultValue);
 const OAUTH_REDIRECT_KEY = "gttc_lms_oauth_redirect";
+const LEGACY_TOKEN_KEYS = ["gttc_lms_auth_token", "token"];
+
+function clearLegacyTokenKeys() {
+  try {
+    if (typeof window !== "undefined") {
+      LEGACY_TOKEN_KEYS.forEach((key) => window.localStorage.removeItem(key));
+    }
+  } catch {
+    // ignore local storage failures
+  }
+}
 
 function clearClientSessionData() {
-  setStoredAuthToken(null);
-
   if (typeof window === "undefined") {
     return;
   }
 
-  try {
-    window.localStorage.clear();
-  } catch {
-    // ignore local storage failures
-  }
+  clearLegacyTokenKeys();
 
   try {
-    window.sessionStorage.clear();
+    window.sessionStorage.removeItem(OAUTH_REDIRECT_KEY);
   } catch {
     // ignore session storage failures
   }
@@ -71,70 +76,100 @@ function normalizeRedirectPath(path?: string) {
   return path.startsWith("/") ? path : `/${path}`;
 }
 
-async function getSupabaseAccessToken() {
-  const { data, error } = await supabase.auth.getSession();
-  if (error) {
-    throw new Error(error.message);
-  }
-  return data.session?.access_token ?? null;
-}
-
-function getFallbackUser(email?: string | null): User {
-  return {
-    id: 0,
-    email: email || "pending@gttc.local",
-    name: "Pending User",
-    phone: null,
-    registerNumber: null,
-    department: null,
-    semester: null,
-    year: null,
-    role: "USER",
-    status: "ACTIVE",
-    verified: false,
-  };
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [isReady, setIsReady] = React.useState(false);
 
-  const setSessionUser = React.useCallback(
-    (profile: User | null, token?: string | null) => {
-      if (token !== undefined) {
-        setStoredAuthToken(token || null);
-      }
-      setUser(profile);
-    },
-    [],
-  );
+  const setSessionUser = React.useCallback((profile: User | null) => {
+    setUser(profile);
+  }, []);
 
   const signInWithPassword = React.useCallback(
     async (identifier: string, password: string) => {
-      const response = await api.login({ email: identifier.trim(), password });
-      setSessionUser(response.user, response.token);
-      return response.user;
+      const email = identifier.trim().toLowerCase();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      const accessToken = data.session?.access_token ?? null;
+      const profile = await api.getMe(accessToken);
+      setSessionUser(profile);
+      return profile;
     },
     [setSessionUser],
   );
 
   const signInWithAdminCredentials = React.useCallback(
     async (username: string, password: string) => {
-      const response = await api.adminLogin({
-        username: username.trim(),
+      const email = username.trim().toLowerCase();
+
+      if (!email.includes("@")) {
+        throw new Error("Use admin email address");
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
         password,
       });
-      setSessionUser(response.user, response.token);
-      return response.user;
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      const accessToken = data.session?.access_token ?? null;
+      const profile = await api.getMe(accessToken);
+      if (profile.role !== "ADMIN") {
+        try {
+          await supabase.auth.signOut({ scope: "global" });
+        } catch {
+          // ignore sign-out failures
+        }
+        setSessionUser(null);
+        throw new Error("This account does not have admin access");
+      }
+
+      setSessionUser(profile);
+      return profile;
     },
     [setSessionUser],
   );
 
   const signUpWithPassword = React.useCallback(
     async (payload: SignUpPayload) => {
-      const response = await api.register(payload);
-      setSessionUser(response.user, response.token);
-      return response.user;
+      const { data, error } = await supabase.auth.signUp({
+        email: payload.email.trim().toLowerCase(),
+        password: payload.password,
+        options: {
+          data: {
+            full_name: payload.name,
+            phone: payload.phone ?? undefined,
+          },
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (!data.session) {
+        setSessionUser(null);
+        return null;
+      }
+
+      try {
+        const accessToken = data.session.access_token;
+        const profile = await api.getMe(accessToken);
+        setSessionUser(profile);
+        return profile;
+      } catch {
+        setSessionUser(null);
+        return null;
+      }
     },
     [setSessionUser],
   );
@@ -143,10 +178,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const targetPath = normalizeRedirectPath(redirectTo);
     const callbackUrl = `${window.location.origin}/login`;
 
-    clearClientSessionData();
-
     // Ensure OAuth always starts from a signed-out state.
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut({ scope: "global" });
+    } catch {
+      // ignore sign-out failures and continue with OAuth flow
+    }
+    clearClientSessionData();
 
     try {
       window.sessionStorage.setItem(OAUTH_REDIRECT_KEY, targetPath);
@@ -159,7 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       options: {
         redirectTo: callbackUrl,
         queryParams: {
-          prompt: "select_account",
+          prompt: "select_account consent",
         },
       },
     });
@@ -170,10 +208,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = React.useCallback(async () => {
+    try {
+      await supabase.auth.signOut({ scope: "global" });
+    } catch {
+      // ignore sign-out failures and clear local session regardless
+    }
     clearClientSessionData();
-
-    await supabase.auth.signOut({ scope: "global" });
-    setSessionUser(null, null);
+    setSessionUser(null);
 
     if (typeof window !== "undefined") {
       clearClientSessionData();
@@ -182,85 +223,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [setSessionUser]);
 
   const refreshUser = React.useCallback(async () => {
-    let token = getStoredAuthToken();
-
-    if (!token) {
-      token = await getSupabaseAccessToken().catch(() => null);
-      if (token) {
-        setStoredAuthToken(token);
-      }
-    }
-
-    if (!token) {
-      setSessionUser(null, null);
-      return;
-    }
-
     try {
       const profile = await api.getMe();
-      setSessionUser(profile, token);
+      setSessionUser(profile);
     } catch {
-      setSessionUser(null, null);
+      setSessionUser(null);
       throw new Error("Session expired. Please login again.");
     }
   }, [setSessionUser]);
 
   React.useEffect(() => {
     let cancelled = false;
+    clearLegacyTokenKeys();
+
+    const readyFallback = window.setTimeout(() => {
+      if (!cancelled) {
+        setIsReady(true);
+      }
+    }, 6000);
 
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         if (cancelled) {
           return;
         }
 
-        const token = session?.access_token || null;
-
-        if (token) {
-          setStoredAuthToken(token);
-
+        if (session?.access_token) {
           try {
-            const profile = await api.getMe();
+            const profile = await api.getMe(session.access_token);
             if (!cancelled) {
-              setSessionUser(profile, token);
+              setSessionUser(profile);
             }
           } catch {
             if (!cancelled) {
-              setUser(getFallbackUser(session?.user?.email));
+              setSessionUser(null);
             }
           }
-        } else if (!cancelled) {
-          setSessionUser(null, null);
+        } else if (!cancelled && event === "SIGNED_OUT") {
+          setSessionUser(null);
         }
       },
     );
 
     const hydrate = async () => {
-      let token = getStoredAuthToken();
+      let accessToken: string | null = null;
 
-      if (!token) {
-        token = await getSupabaseAccessToken().catch(() => null);
-        if (token) {
-          setStoredAuthToken(token);
-        }
-      }
-
-      if (!token) {
-        if (!cancelled) {
-          setUser(null);
-          setIsReady(true);
-        }
-        return;
+      try {
+        const { data } = await supabase.auth.getSession();
+        accessToken = data.session?.access_token ?? null;
+      } catch {
+        accessToken = null;
       }
 
       try {
-        const profile = await api.getMe();
+        if (!accessToken) {
+          if (!cancelled) {
+            setSessionUser(null);
+          }
+          return;
+        }
+
+        const profile = await api.getMe(accessToken);
         if (!cancelled) {
-          setUser(profile);
+          setSessionUser(profile);
         }
       } catch {
         if (!cancelled) {
-          setUser(getFallbackUser());
+          setSessionUser(null);
         }
       } finally {
         if (!cancelled) {
@@ -273,6 +302,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       cancelled = true;
+      window.clearTimeout(readyFallback);
       listener?.subscription.unsubscribe();
     };
   }, [setSessionUser]);

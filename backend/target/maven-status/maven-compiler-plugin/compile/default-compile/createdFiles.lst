@@ -45,6 +45,7 @@ com/gttc/lms/dto/UserResponse.class
 com/gttc/lms/controller/StatusController.class
 com/gttc/lms/config/WebConfig.class
 com/gttc/lms/repository/DonationRepository.class
+com/gttc/lms/config/SecurityErrorHandlersConfig.class
 com/gttc/lms/model/enums/Role.class
 com/gttc/lms/service/BookService.class
 com/gttc/lms/model/enums/AuthProvider.class

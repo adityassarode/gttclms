@@ -1,64 +1,115 @@
 package com.gttc.lms.service;
 
-import jakarta.mail.internet.MimeMessage;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 @Service
 public class EmailService {
     private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
+    private static final String RESEND_API_URL = "https://api.resend.com/emails";
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(5);
 
-    private final JavaMailSender mailSender;
+    private final ObjectMapper objectMapper;
+    private final HttpClient httpClient;
     private final String mode;
     private final String from;
+    private final String resendApiKey;
 
-    public EmailService(JavaMailSender mailSender,
+    public EmailService(ObjectMapper objectMapper,
                         @Value("${app.mail.mode}") String mode,
-                        @Value("${app.mail.from}") String from) {
-        this.mailSender = mailSender;
+                        @Value("${app.mail.from}") String from,
+                        @Value("${app.mail.resend.apiKey:}") String resendApiKey) {
+        this.objectMapper = objectMapper;
+        this.httpClient = HttpClient.newBuilder()
+                .connectTimeout(CONNECT_TIMEOUT)
+                .build();
         this.mode = mode;
         this.from = from;
+        this.resendApiKey = resendApiKey;
     }
 
     public void send(String to, String subject, String body) {
-        if (to == null || to.isBlank()) {
-            return;
-        }
-        if (!"smtp".equalsIgnoreCase(mode)) {
-            logger.info("Email to {} subject '{}' body: {}", to, subject, body);
-            return;
-        }
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(from);
-        message.setTo(to);
-        message.setSubject(subject);
-        message.setText(body);
-        mailSender.send(message);
+        queueSend(to, subject, toHtml(body));
     }
 
     public void sendHtml(String to, String subject, String htmlBody) {
+        queueSend(to, subject, htmlBody);
+    }
+
+    private void queueSend(String to, String subject, String htmlBody) {
         if (to == null || to.isBlank()) {
             return;
         }
-        if (!"smtp".equalsIgnoreCase(mode)) {
+
+        if (!"resend".equalsIgnoreCase(mode)) {
             logger.info("Email to {} subject '{}' body: {}", to, subject, htmlBody);
             return;
         }
-        try {
-            MimeMessage mime = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mime, "UTF-8");
-            helper.setFrom(from);
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(htmlBody, true);
-            mailSender.send(mime);
-        } catch (Exception ex) {
-            logger.warn("Failed to send email", ex);
+
+        if (resendApiKey == null || resendApiKey.isBlank()) {
+            logger.warn("Email skipped: APP_RESEND_API_KEY is not configured");
+            return;
         }
+
+        CompletableFuture.runAsync(() -> sendWithResend(to, subject, htmlBody));
+    }
+
+    private void sendWithResend(String to, String subject, String htmlBody) {
+        try {
+            Map<String, Object> payload = Map.of(
+                    "from", from,
+                    "to", List.of(to),
+                    "subject", subject,
+                    "html", htmlBody
+            );
+
+            String body = objectMapper.writeValueAsString(payload);
+
+            HttpRequest request = HttpRequest.newBuilder(URI.create(RESEND_API_URL))
+                    .timeout(REQUEST_TIMEOUT)
+                    .header("Authorization", "Bearer " + resendApiKey)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                logger.warn(
+                        "Resend send failed with status {} and body {}",
+                        response.statusCode(),
+                        response.body()
+                );
+            }
+        } catch (Exception ex) {
+            logger.warn("Failed to send email with Resend", ex);
+        }
+    }
+
+    private String toHtml(String plainText) {
+        String safe = escapeHtml(plainText == null ? "" : plainText);
+        return "<p>" + safe.replace("\n", "<br/>") + "</p>";
+    }
+
+    private String escapeHtml(String value) {
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 }
