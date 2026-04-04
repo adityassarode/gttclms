@@ -45,6 +45,12 @@ const AuthContext = React.createContext<AuthContextValue>(defaultValue);
 const OAUTH_REDIRECT_KEY = "gttc_lms_oauth_redirect";
 const LEGACY_TOKEN_KEYS = ["gttc_lms_auth_token", "token"];
 
+type SupabaseSessionUser = {
+  id?: string;
+  email?: string | null;
+  user_metadata?: Record<string, unknown> | null;
+};
+
 function clearLegacyTokenKeys() {
   try {
     if (typeof window !== "undefined") {
@@ -76,6 +82,36 @@ function normalizeRedirectPath(path?: string) {
   return path.startsWith("/") ? path : `/${path}`;
 }
 
+function buildFallbackUserProfile(
+  authUser: SupabaseSessionUser | null,
+): User | null {
+  if (!authUser?.id || !authUser.email) {
+    return null;
+  }
+
+  const metadata = authUser.user_metadata || {};
+  const fullName =
+    typeof metadata.full_name === "string"
+      ? metadata.full_name
+      : typeof metadata.name === "string"
+        ? metadata.name
+        : authUser.email.split("@")[0];
+
+  return {
+    id: authUser.id,
+    email: authUser.email,
+    name: fullName,
+    phone: null,
+    registerNumber: null,
+    department: null,
+    semester: null,
+    year: null,
+    role: "USER",
+    status: "ACTIVE",
+    verified: false,
+  };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null);
   const [isReady, setIsReady] = React.useState(false);
@@ -97,9 +133,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const accessToken = data.session?.access_token ?? null;
-      const profile = await api.getMe(accessToken);
-      setSessionUser(profile);
-      return profile;
+      try {
+        const profile = await api.getMe(accessToken);
+        setSessionUser(profile);
+        return profile;
+      } catch {
+        const fallbackProfile = buildFallbackUserProfile(data.user);
+        if (fallbackProfile) {
+          setSessionUser(fallbackProfile);
+          return fallbackProfile;
+        }
+        throw new Error("Authenticated, but profile sync is not ready yet");
+      }
     },
     [setSessionUser],
   );
@@ -167,6 +212,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSessionUser(profile);
         return profile;
       } catch {
+        const fallbackProfile = buildFallbackUserProfile(data.user);
+        if (fallbackProfile) {
+          setSessionUser(fallbackProfile);
+          return fallbackProfile;
+        }
         setSessionUser(null);
         return null;
       }

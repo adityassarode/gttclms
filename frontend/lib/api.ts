@@ -21,7 +21,6 @@ import type {
 import { supabase } from "@/lib/supabase";
 
 const REQUEST_TIMEOUT_MS = 15000;
-let authRedirectInProgress = false;
 
 const CLOUD_API_BASE_URL =
   "https://gttclms-bvcyaudmh0ecebg5.centralindia-01.azurewebsites.net";
@@ -90,48 +89,6 @@ function getResolvedBaseUrl() {
 function getApiOrigin() {
   const url = new URL(getResolvedBaseUrl());
   return `${url.protocol}//${url.host}`;
-}
-
-function buildAuthLoginPath() {
-  if (!isBrowser()) {
-    return "/login";
-  }
-
-  return window.location.pathname.startsWith("/admin")
-    ? "/admin/login"
-    : "/login";
-}
-
-function getCurrentRedirectTarget() {
-  if (!isBrowser()) {
-    return "/";
-  }
-
-  return `${window.location.pathname}${window.location.search}`;
-}
-
-function redirectToLoginIfNeeded() {
-  if (!isBrowser()) {
-    return false;
-  }
-
-  const currentPath = window.location.pathname;
-  if (
-    currentPath.startsWith("/login") ||
-    currentPath.startsWith("/admin/login")
-  ) {
-    return false;
-  }
-
-  if (authRedirectInProgress) {
-    return true;
-  }
-
-  authRedirectInProgress = true;
-  const loginPath = buildAuthLoginPath();
-  const redirectTarget = encodeURIComponent(getCurrentRedirectTarget());
-  window.location.replace(`${loginPath}?redirect=${redirectTarget}`);
-  return true;
 }
 
 function buildUrl(path: string, params?: Record<string, unknown>) {
@@ -241,10 +198,6 @@ async function request<T>(
   }
 
   if (includeAuth && !token) {
-    if (redirectToLoginIfNeeded()) {
-      return new Promise<T>(() => {});
-    }
-
     throw new Error("Authentication required");
   }
 
@@ -318,16 +271,10 @@ async function request<T>(
   if (!response.ok) {
     if (includeAuth && response.status === 401) {
       const stillAuthenticated = await hasActiveSession();
-
-      // Redirect only when the browser session is actually missing/expired.
-      // Keep backend 401s as explicit errors to avoid login redirect loops.
-      if (!stillAuthenticated && redirectToLoginIfNeeded()) {
-        return new Promise<T>(() => {});
-      }
-
-      throw new Error(
-        extractApiMessage(payload, "Unauthorized for this request"),
-      );
+      const fallback = stillAuthenticated
+        ? "Unauthorized for this request"
+        : "Session expired. Please login again.";
+      throw new Error(extractApiMessage(payload, fallback));
     }
 
     if (includeAuth && response.status === 403) {
