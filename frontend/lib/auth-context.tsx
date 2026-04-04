@@ -44,6 +44,26 @@ const defaultValue: AuthContextValue = {
 const AuthContext = React.createContext<AuthContextValue>(defaultValue);
 const OAUTH_REDIRECT_KEY = "gttc_lms_oauth_redirect";
 
+function clearClientSessionData() {
+  setStoredAuthToken(null);
+
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.clear();
+  } catch {
+    // ignore local storage failures
+  }
+
+  try {
+    window.sessionStorage.clear();
+  } catch {
+    // ignore session storage failures
+  }
+}
+
 function normalizeRedirectPath(path?: string) {
   if (!path) {
     return "/";
@@ -123,13 +143,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const targetPath = normalizeRedirectPath(redirectTo);
     const callbackUrl = `${window.location.origin}/login`;
 
+    clearClientSessionData();
+
+    // Ensure OAuth always starts from a signed-out state.
+    await supabase.auth.signOut();
+
     try {
       window.sessionStorage.setItem(OAUTH_REDIRECT_KEY, targetPath);
     } catch {
       // ignore session storage failures
     }
-
-    setStoredAuthToken(null);
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -147,22 +170,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = React.useCallback(async () => {
-    await supabase.auth.signOut();
+    clearClientSessionData();
+
+    await supabase.auth.signOut({ scope: "global" });
     setSessionUser(null, null);
 
     if (typeof window !== "undefined") {
-      try {
-        window.localStorage.clear();
-      } catch {
-        // ignore local storage failures
-      }
-
-      try {
-        window.sessionStorage.clear();
-      } catch {
-        // ignore session storage failures
-      }
-
+      clearClientSessionData();
       window.location.href = "/login";
     }
   }, [setSessionUser]);

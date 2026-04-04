@@ -335,7 +335,13 @@ export const api = {
   },
 
   getBooks(params?: { q?: string; category?: string; featured?: boolean }) {
-    return request<Book[]>("/api/books", {}, "Unable to load books", params);
+    return request<Book[]>(
+      "/api/books",
+      {},
+      "Unable to load books",
+      params,
+      false,
+    );
   },
 
   getBook(id: string | number) {
@@ -350,6 +356,8 @@ export const api = {
         body: JSON.stringify(normalizeBookPayload(payload)),
       },
       "Unable to create book",
+      undefined,
+      false,
     );
   },
 
@@ -361,6 +369,8 @@ export const api = {
         body: JSON.stringify(normalizeBookPayload(payload)),
       },
       "Unable to update book",
+      undefined,
+      false,
     );
   },
 
@@ -371,6 +381,8 @@ export const api = {
         method: "DELETE",
       },
       "Unable to delete book",
+      undefined,
+      false,
     );
   },
 
@@ -486,6 +498,8 @@ export const api = {
       "/api/donations",
       {},
       "Unable to load donations",
+      undefined,
+      false,
     );
   },
 
@@ -494,11 +508,19 @@ export const api = {
       "/api/admin/analytics",
       {},
       "Unable to load analytics",
+      undefined,
+      false,
     );
   },
 
   getAdminUsers() {
-    return request<User[]>("/api/users", {}, "Unable to load users");
+    return request<User[]>(
+      "/api/users",
+      {},
+      "Unable to load users",
+      undefined,
+      false,
+    );
   },
 
   addStudent(payload: StudentRequestPayload) {
@@ -509,6 +531,8 @@ export const api = {
         body: JSON.stringify(payload),
       },
       "Unable to add student",
+      undefined,
+      false,
     );
   },
 
@@ -523,6 +547,8 @@ export const api = {
         body: formData,
       },
       "Unable to upload students",
+      undefined,
+      false,
     );
   },
 
@@ -534,6 +560,8 @@ export const api = {
         body: JSON.stringify(payload),
       },
       "Unable to ban user",
+      undefined,
+      false,
     );
   },
 
@@ -544,6 +572,8 @@ export const api = {
         method: "DELETE",
       },
       "Unable to delete user",
+      undefined,
+      false,
     );
   },
 
@@ -565,6 +595,8 @@ export const api = {
         body: JSON.stringify(payload),
       },
       "Unable to verify student",
+      undefined,
+      false,
     );
   },
 };
