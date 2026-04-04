@@ -353,9 +353,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } catch {
             // Keep the current user state on transient profile fetch errors.
             // A failed refresh should not force an auth loop back to /login.
-            if (!cancelled && event === "SIGNED_OUT") {
-              setSessionUser(null);
-            }
+            return;
           }
         } else if (!cancelled && event === "SIGNED_OUT") {
           setSessionUser(null);
