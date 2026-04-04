@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
   Eye,
   EyeOff,
@@ -25,6 +26,7 @@ import {
 } from "@/components/ui/card";
 
 export default function AdminLoginPage() {
+  const router = useRouter();
   const { signInWithAdminCredentials, logout, user, isReady } = useAuth();
 
   const [showPassword, setShowPassword] = React.useState(false);
@@ -37,12 +39,12 @@ export default function AdminLoginPage() {
     }
 
     if (user.role === "ADMIN") {
-      window.location.href = "/admin";
+      router.replace("/admin");
       return;
     }
 
-    window.location.href = "/";
-  }, [isReady, user]);
+    router.replace("/");
+  }, [isReady, router, user]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -78,7 +80,7 @@ export default function AdminLoginPage() {
         return;
       }
       toast.success("Admin login successful");
-      window.location.href = "/admin";
+      router.replace("/admin");
     } catch (error) {
       toast.error(getErrorMessage(error, "Invalid admin credentials"));
     } finally {

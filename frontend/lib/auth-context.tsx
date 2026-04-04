@@ -237,9 +237,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearLegacyTokenKeys();
 
     const readyFallback = window.setTimeout(() => {
-      if (!cancelled) {
-        setIsReady(true);
-      }
+      // Avoid marking auth as ready too early when a valid session exists
+      // but profile hydration is still in-flight.
+      void (async () => {
+        if (cancelled) {
+          return;
+        }
+
+        try {
+          const { data, error } = await supabase.auth.getSession();
+          if (cancelled) {
+            return;
+          }
+
+          if (!error && data.session?.access_token) {
+            return;
+          }
+        } catch {
+          // fall through to ready state on session check failures
+        }
+
+        if (!cancelled) {
+          setIsReady(true);
+        }
+      })();
     }, 6000);
 
     const { data: listener } = supabase.auth.onAuthStateChange(
@@ -255,7 +276,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setSessionUser(profile);
             }
           } catch {
-            if (!cancelled) {
+            // Keep the current user state on transient profile fetch errors.
+            // A failed refresh should not force an auth loop back to /login.
+            if (!cancelled && event === "SIGNED_OUT") {
               setSessionUser(null);
             }
           }

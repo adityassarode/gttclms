@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Eye,
   EyeOff,
@@ -46,6 +46,7 @@ function normalizeRedirectPath(path?: string | null) {
 }
 
 function LoginPageContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const {
     signInWithPassword,
@@ -95,12 +96,12 @@ function LoginPageContent() {
     }
 
     if (user.role === "USER" && !user.verified) {
-      window.location.href = "/verify";
+      router.replace(`/verify?redirect=${encodeURIComponent(redirectTo)}`);
       return;
     }
 
-    window.location.href = redirectTo;
-  }, [isReady, resolveRedirectTarget, user]);
+    router.replace(redirectTo);
+  }, [isReady, resolveRedirectTarget, router, user]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -154,18 +155,18 @@ function LoginPageContent() {
         toast.success(
           "Account created. Verify your student ID to unlock restricted actions.",
         );
-        window.location.href = "/verify";
+        router.replace(`/verify?redirect=${encodeURIComponent(redirectTo)}`);
         return;
       }
 
       if (profile.role === "ADMIN") {
         toast.success("Admin login successful");
-        window.location.href = "/admin";
+        router.replace("/admin");
         return;
       }
 
       toast.success("Welcome back");
-      window.location.href = redirectTo;
+      router.replace(redirectTo);
     } catch (error) {
       toast.error(getErrorMessage(error, "Authentication failed"));
     } finally {
