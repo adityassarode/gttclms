@@ -13,6 +13,8 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,10 @@ public class StudentService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(
+            cacheNames = "studentByRegister",
+            key = "T(java.util.Objects).toString(#registerNumber, '').trim().replace(' ', '').replace('-', '').toUpperCase()"
+    )
     public Student findByRegisterNumber(String registerNumber) {
         String raw = sanitizeRegisterNumber(registerNumber);
         String normalized = normalizeRegisterNumber(raw);
@@ -39,6 +45,7 @@ public class StudentService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Register number not found"));
     }
 
+    @CacheEvict(cacheNames = "studentByRegister", allEntries = true)
     public Student addStudent(StudentRequest request) {
         String registerNumber = sanitizeRegisterNumber(request.getRegisterNumber());
 
@@ -55,6 +62,7 @@ public class StudentService {
         return studentRepository.save(student);
     }
 
+    @CacheEvict(cacheNames = "studentByRegister", allEntries = true)
     public List<Student> uploadStudents(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "No file provided");

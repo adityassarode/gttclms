@@ -9,8 +9,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class BookService {
@@ -20,31 +23,34 @@ public class BookService {
         this.bookRepository = bookRepository;
     }
 
+    @Transactional(readOnly = true)
+    @Cacheable(
+            cacheNames = "booksSearch",
+            key = "T(java.util.Objects).toString(#q, '').trim().toLowerCase() + '|' + "
+                    + "T(java.util.Objects).toString(#category, '').trim().toLowerCase() + '|' + "
+                    + "T(java.util.Objects).toString(#featured, 'all')"
+    )
     public List<BookResponse> search(String q, String category, Boolean featured) {
-        List<Book> books = bookRepository.findAll();
         String query = q == null ? "" : q.toLowerCase(Locale.ROOT).trim();
         String categoryFilter = category == null ? "" : category.toLowerCase(Locale.ROOT).trim();
-        return books.stream()
-                .filter(book -> featured == null || book.isFeatured() == featured)
-                .filter(book -> categoryFilter.isBlank()
-                        || book.getCategory().toLowerCase(Locale.ROOT).equals(categoryFilter))
-                .filter(book -> query.isBlank()
-                        || book.getTitle().toLowerCase(Locale.ROOT).contains(query)
-                        || book.getAuthor().toLowerCase(Locale.ROOT).contains(query)
-                        || (book.getKeywords() != null && book.getKeywords().toLowerCase(Locale.ROOT).contains(query)))
+        return bookRepository.search(query, categoryFilter, featured).stream()
                 .map(DtoMapper::toBook)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "bookById", key = "#id")
     public BookResponse getBook(UUID id) {
         return DtoMapper.toBook(findBook(id));
     }
 
+    @Transactional(readOnly = true)
     public Book findBook(UUID id) {
         return bookRepository.findById(id)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Book not found"));
     }
 
+    @CacheEvict(cacheNames = {"booksSearch", "bookById"}, allEntries = true)
     public BookResponse createBook(BookRequest request) {
         Book book = new Book();
         book.setTitle(request.getTitle());
@@ -60,6 +66,7 @@ public class BookService {
         return DtoMapper.toBook(book);
     }
 
+    @CacheEvict(cacheNames = {"booksSearch", "bookById"}, allEntries = true)
     public BookResponse updateBook(UUID id, BookRequest request) {
         Book book = findBook(id);
         book.setTitle(request.getTitle());
@@ -82,6 +89,7 @@ public class BookService {
         return DtoMapper.toBook(book);
     }
 
+    @CacheEvict(cacheNames = {"booksSearch", "bookById"}, allEntries = true)
     public void deleteBook(UUID id) {
         Book book = findBook(id);
         bookRepository.delete(book);

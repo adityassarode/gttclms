@@ -49,6 +49,8 @@ com/gttc/lms/repository/DonationRepository.class
 com/gttc/lms/config/SecurityErrorHandlersConfig.class
 com/gttc/lms/model/enums/Role.class
 com/gttc/lms/service/BookService.class
+com/gttc/lms/service/BackendWarmupService.class
+com/gttc/lms/config/CacheConfig.class
 com/gttc/lms/model/enums/AuthProvider.class
 com/gttc/lms/config/SupabaseIssuerAuthenticationManagerResolver$1.class
 com/gttc/lms/dto/BorrowResponse.class

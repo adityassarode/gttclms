@@ -27,6 +27,7 @@
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/controller/UserController.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/service/EmailService.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/dto/LoginRequest.java
+/workspaces/gttclms/backend/src/main/java/com/gttc/lms/config/CacheConfig.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/service/BookService.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/model/enums/Role.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/exception/GlobalExceptionHandler.java
@@ -65,6 +66,7 @@
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/service/StudentService.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/service/DonationService.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/service/CurrentUserResolver.java
+/workspaces/gttclms/backend/src/main/java/com/gttc/lms/service/BackendWarmupService.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/service/DtoMapper.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/dto/BorrowResponse.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/exception/ErrorResponse.java

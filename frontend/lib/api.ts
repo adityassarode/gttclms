@@ -20,8 +20,8 @@ import type {
 } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 
-const REQUEST_TIMEOUT_MS = 10000;
-const LOOKUP_REQUEST_TIMEOUT_MS = 7000;
+const REQUEST_TIMEOUT_MS = 20000;
+const LOOKUP_REQUEST_TIMEOUT_MS = 15000;
 const PUBLIC_GET_CACHE_TTL_MS = 15000;
 const TOKEN_CACHE_TTL_MS = 2500;
 
@@ -227,6 +227,7 @@ async function request<T>(
   timeoutMs = REQUEST_TIMEOUT_MS,
 ): Promise<T> {
   const method = requestMethod(options);
+  const canRetryOnTimeout = method === "GET" || method === "HEAD";
   const canUsePublicGetCache = !includeAuth && method === "GET";
   const cacheKey = canUsePublicGetCache
     ? getPublicGetCacheKey(path, params)
@@ -278,7 +279,10 @@ async function request<T>(
     const isFormBody =
       typeof FormData !== "undefined" && options.body instanceof FormData;
 
-    const send = async (activeToken: string | null) => {
+    const send = async (
+      activeToken: string | null,
+      activeTimeoutMs = timeoutMs,
+    ) => {
       const requestHeaders = new Headers(headers);
 
       if (activeToken) {
@@ -290,7 +294,7 @@ async function request<T>(
       }
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      const timeoutId = setTimeout(() => controller.abort(), activeTimeoutMs);
 
       try {
         return await fetch(buildUrl(path, params), {
@@ -310,10 +314,28 @@ async function request<T>(
     } catch (error) {
       const isAbortError =
         error instanceof DOMException && error.name === "AbortError";
-      if (isAbortError) {
+
+      if (isAbortError && canRetryOnTimeout) {
+        try {
+          response = await send(token, Math.min(timeoutMs * 2, 30000));
+        } catch (retryError) {
+          const retryIsAbortError =
+            retryError instanceof DOMException &&
+            retryError.name === "AbortError";
+          if (retryIsAbortError) {
+            throw new Error(`${fallbackMessage} (timeout)`);
+          }
+          throw new Error(fallbackMessage);
+        }
+      } else if (isAbortError) {
         throw new Error(`${fallbackMessage} (timeout)`);
+      } else {
+        throw new Error(fallbackMessage);
       }
-      throw new Error(fallbackMessage);
+
+      if (!response) {
+        throw new Error(fallbackMessage);
+      }
     }
 
     if (includeAuth && response.status === 401 && !authTokenOverride) {
@@ -388,14 +410,6 @@ async function request<T>(
   } finally {
     publicGetInFlightRequests.delete(cacheKey);
   }
-}
-
-function toBrowserOriginUrl(path: string) {
-  if (!isBrowser()) {
-    return path;
-  }
-
-  return new URL(path, window.location.origin).toString();
 }
 
 function normalizeBookPayload(payload: BookUpsertPayload) {
@@ -747,17 +761,6 @@ export const api = {
         { path: `/api/student/${encoded}` },
         { path: "/api/student", params: { registerNumber: normalized } },
       ];
-
-    if (isBrowser()) {
-      attempts.push(
-        { path: toBrowserOriginUrl(`/api/students/${encoded}`) },
-        { path: toBrowserOriginUrl(`/api/student/${encoded}`) },
-        {
-          path: toBrowserOriginUrl("/api/student"),
-          params: { registerNumber: normalized },
-        },
-      );
-    }
 
     // Remove duplicate attempts before dispatching parallel requests.
     const unique = new Map<
