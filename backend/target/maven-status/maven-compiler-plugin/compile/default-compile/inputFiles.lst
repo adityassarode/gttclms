@@ -62,6 +62,7 @@
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/repository/DonationRepository.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/service/StudentService.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/service/DonationService.java
+/workspaces/gttclms/backend/src/main/java/com/gttc/lms/service/CurrentUserResolver.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/service/DtoMapper.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/dto/BorrowResponse.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/exception/ErrorResponse.java

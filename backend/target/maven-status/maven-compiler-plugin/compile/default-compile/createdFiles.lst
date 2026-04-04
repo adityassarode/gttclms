@@ -15,6 +15,7 @@ com/gttc/lms/dto/AnalyticsResponse$MetricPoint.class
 com/gttc/lms/dto/AuthResponse.class
 com/gttc/lms/dto/BorrowRequest.class
 com/gttc/lms/controller/ReservationController.class
+com/gttc/lms/service/CurrentUserResolver.class
 com/gttc/lms/repository/BookRepository.class
 com/gttc/lms/model/enums/ReservationStatus.class
 com/gttc/lms/controller/BorrowController.class
@@ -28,6 +29,7 @@ com/gttc/lms/service/SeedDataRunner.class
 com/gttc/lms/controller/UserController.class
 com/gttc/lms/repository/ReservationRepository.class
 com/gttc/lms/controller/BookController.class
+com/gttc/lms/config/SupabaseUserFilter.class
 com/gttc/lms/model/Reservation.class
 com/gttc/lms/exception/GlobalExceptionHandler.class
 com/gttc/lms/model/User.class
@@ -40,6 +42,7 @@ com/gttc/lms/model/Donation.class
 com/gttc/lms/service/ReservationService.class
 com/gttc/lms/service/AuthService.class
 com/gttc/lms/dto/UserResponse.class
+com/gttc/lms/controller/StatusController.class
 com/gttc/lms/config/WebConfig.class
 com/gttc/lms/repository/DonationRepository.class
 com/gttc/lms/model/enums/Role.class
@@ -56,11 +59,13 @@ com/gttc/lms/dto/RegisterRequest.class
 com/gttc/lms/repository/StudentRepository.class
 com/gttc/lms/model/Book.class
 com/gttc/lms/model/Student.class
+com/gttc/lms/config/AppBearerTokenResolver.class
 com/gttc/lms/repository/FavoriteRepository.class
 com/gttc/lms/model/enums/BorrowStatus.class
 com/gttc/lms/controller/DonationController.class
 com/gttc/lms/service/FavoriteService.class
 com/gttc/lms/controller/StudentController.class
+com/gttc/lms/service/SupabaseUserService.class
 com/gttc/lms/dto/ReserveRequest.class
 com/gttc/lms/config/SecurityConfig.class
 com/gttc/lms/service/StudentService$1.class
