@@ -30,7 +30,35 @@ const RAW_API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   DEFAULT_API_BASE_URL;
 
-const API_BASE_URL = RAW_API_BASE_URL.replace(/\/$/, "");
+const KNOWN_FRONTEND_HOSTS = new Set(["gttclms.vercel.app"]);
+
+function normalizeApiBaseUrl(rawValue: string) {
+  const value = rawValue.trim().replace(/^['"]|['"]$/g, "");
+
+  if (!value || value.startsWith("/") || value.startsWith(".")) {
+    return DEFAULT_API_BASE_URL;
+  }
+
+  const candidate = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+
+  try {
+    const parsed = new URL(candidate);
+
+    if (KNOWN_FRONTEND_HOSTS.has(parsed.hostname.toLowerCase())) {
+      return DEFAULT_API_BASE_URL;
+    }
+
+    if (isBrowser() && parsed.host === window.location.host) {
+      return DEFAULT_API_BASE_URL;
+    }
+
+    return `${parsed.protocol}//${parsed.host}`.replace(/\/$/, "");
+  } catch {
+    return DEFAULT_API_BASE_URL;
+  }
+}
+
+const API_BASE_URL = normalizeApiBaseUrl(RAW_API_BASE_URL);
 
 function isBrowser() {
   return typeof window !== "undefined";
@@ -73,8 +101,18 @@ function buildUrl(path: string, params?: Record<string, unknown>) {
   return url.toString();
 }
 
+function looksLikeHtmlDocument(value: string) {
+  const normalized = value.trim().slice(0, 200).toLowerCase();
+  return (
+    normalized.startsWith("<!doctype html") || normalized.startsWith("<html")
+  );
+}
+
 function extractApiMessage(payload: unknown, fallback: string) {
   if (typeof payload === "string" && payload.trim()) {
+    if (looksLikeHtmlDocument(payload)) {
+      return `${fallback}. API returned HTML instead of JSON; check backend API URL configuration.`;
+    }
     return payload;
   }
 
@@ -361,7 +399,7 @@ export const api = {
   },
 
   borrowBook(bookId: string | number) {
-    const payload: BorrowRequestPayload = { bookId: Number(bookId) };
+    const payload: BorrowRequestPayload = { bookId };
     return request<BorrowRecord>(
       "/api/borrows",
       {
@@ -373,7 +411,7 @@ export const api = {
   },
 
   reserveBook(bookId: string | number) {
-    const payload: ReserveRequestPayload = { bookId: Number(bookId) };
+    const payload: ReserveRequestPayload = { bookId };
     return request<ReservationRecord>(
       "/api/reservations",
       {

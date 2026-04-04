@@ -13,7 +13,7 @@ import {
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useProtectedPage } from "@/lib/route-guards";
-import type { BorrowRecord } from "@/lib/types";
+import type { ApiId, BorrowRecord } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { getErrorMessage, toCoverUrl } from "@/lib/ui-helpers";
 import { Button } from "@/components/ui/button";
@@ -68,7 +68,7 @@ function BorrowedCard({
   onReturn,
 }: {
   borrow: BorrowRecord;
-  onReturn: (id: number) => void;
+  onReturn: (id: ApiId) => void;
 }) {
   const [loaded, setLoaded] = React.useState(false);
   const [isReturning, setIsReturning] = React.useState(false);

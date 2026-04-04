@@ -2,9 +2,10 @@ export type UserRole = "USER" | "ADMIN" | string;
 export type UserStatus = "ACTIVE" | "BANNED" | string;
 export type BorrowStatus = "BORROWED" | "RETURNED" | string;
 export type ReservationStatus = "ACTIVE" | "CANCELLED" | "EXPIRED" | string;
+export type ApiId = string | number;
 
 export interface User {
-  id: number;
+  id: ApiId;
   email: string;
   name: string;
   phone?: string | null;
@@ -23,7 +24,7 @@ export interface AuthResponse {
 }
 
 export interface Book {
-  id: number;
+  id: ApiId;
   title: string;
   author: string;
   description?: string | null;
@@ -36,7 +37,7 @@ export interface Book {
 }
 
 export interface DonationRecord {
-  id: number;
+  id: ApiId;
   title: string;
   author: string;
   description?: string | null;
@@ -48,7 +49,7 @@ export interface DonationRecord {
 }
 
 export interface BorrowRecord {
-  id: number;
+  id: ApiId;
   book: Book;
   borrowedAt: string;
   dueAt: string;
@@ -58,7 +59,7 @@ export interface BorrowRecord {
 }
 
 export interface ReservationRecord {
-  id: number;
+  id: ApiId;
   book: Book;
   reservedAt: string;
   expiresAt: string;
@@ -118,11 +119,11 @@ export interface BookUpsertPayload {
 }
 
 export interface BorrowRequestPayload {
-  bookId: number;
+  bookId: ApiId;
 }
 
 export interface ReserveRequestPayload {
-  bookId: number;
+  bookId: ApiId;
 }
 
 export interface VerifyStudentPayload {

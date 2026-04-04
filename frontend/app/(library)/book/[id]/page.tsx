@@ -72,10 +72,10 @@ export default function BookDetailPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  const bookId = Number(params.id);
+  const bookId = params.id;
 
   React.useEffect(() => {
-    if (!Number.isFinite(bookId)) {
+    if (!bookId) {
       setIsLoading(false);
       return;
     }

@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useRequireLoginAction } from "@/lib/route-guards";
-import type { Book } from "@/lib/types";
+import type { ApiId, Book } from "@/lib/types";
 import { getErrorMessage, toCoverUrl, toIsoDate } from "@/lib/ui-helpers";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -38,7 +38,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 const RECENT_BOOKS_KEY = "gttc_recent_books";
 
 interface RecentBook {
-  id: number;
+  id: ApiId;
   title: string;
   author: string;
   category: string;
@@ -167,7 +167,7 @@ function DashboardPageContent() {
   const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState("");
   const [category, setCategory] = React.useState("all");
-  const [favorites, setFavorites] = React.useState<Set<number>>(new Set());
+  const [favorites, setFavorites] = React.useState<Set<ApiId>>(new Set());
   const [recent, setRecent] = React.useState<RecentBook[]>([]);
 
   React.useEffect(() => {

@@ -13,7 +13,7 @@ import {
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import type { User } from "@/lib/types";
+import type { ApiId, User } from "@/lib/types";
 import { getErrorMessage } from "@/lib/ui-helpers";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -60,8 +60,8 @@ export default function AdminUsersPage() {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [roleFilter, setRoleFilter] = React.useState("all");
   const [statusFilter, setStatusFilter] = React.useState("all");
-  const [isBanningId, setIsBanningId] = React.useState<number | null>(null);
-  const [isDeletingId, setIsDeletingId] = React.useState<number | null>(null);
+  const [isBanningId, setIsBanningId] = React.useState<ApiId | null>(null);
+  const [isDeletingId, setIsDeletingId] = React.useState<ApiId | null>(null);
 
   const loadUsers = React.useCallback(async () => {
     setIsLoading(true);

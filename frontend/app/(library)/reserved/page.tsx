@@ -15,7 +15,7 @@ import {
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useProtectedPage } from "@/lib/route-guards";
-import type { ReservationRecord } from "@/lib/types";
+import type { ApiId, ReservationRecord } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { getErrorMessage, toCoverUrl } from "@/lib/ui-helpers";
 import { Button } from "@/components/ui/button";
@@ -61,7 +61,7 @@ function ReservationCard({
   onCancel,
 }: {
   reservation: ReservationRecord;
-  onCancel: (id: number) => void;
+  onCancel: (id: ApiId) => void;
 }) {
   const [loaded, setLoaded] = React.useState(false);
   const [countdown, setCountdown] = React.useState(
