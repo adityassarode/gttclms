@@ -206,6 +206,18 @@ async function getActiveAuthToken() {
   }
 }
 
+async function hasActiveSession() {
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+      return false;
+    }
+    return Boolean(data.session?.access_token);
+  } catch {
+    return false;
+  }
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
@@ -215,9 +227,18 @@ async function request<T>(
   authTokenOverride?: string | null,
 ): Promise<T> {
   const headers = new Headers(options.headers);
-  const token = includeAuth
+  let token = includeAuth
     ? (authTokenOverride ?? (await getActiveAuthToken()))
     : null;
+
+  if (includeAuth && !token && !authTokenOverride) {
+    try {
+      const { data, error } = await supabase.auth.refreshSession();
+      token = error ? null : (data.session?.access_token ?? null);
+    } catch {
+      token = null;
+    }
+  }
 
   if (includeAuth && !token) {
     if (redirectToLoginIfNeeded()) {
@@ -296,11 +317,17 @@ async function request<T>(
 
   if (!response.ok) {
     if (includeAuth && response.status === 401) {
-      if (redirectToLoginIfNeeded()) {
+      const stillAuthenticated = await hasActiveSession();
+
+      // Redirect only when the browser session is actually missing/expired.
+      // Keep backend 401s as explicit errors to avoid login redirect loops.
+      if (!stillAuthenticated && redirectToLoginIfNeeded()) {
         return new Promise<T>(() => {});
       }
 
-      throw new Error("Session expired. Please login again.");
+      throw new Error(
+        extractApiMessage(payload, "Unauthorized for this request"),
+      );
     }
 
     if (includeAuth && response.status === 403) {
