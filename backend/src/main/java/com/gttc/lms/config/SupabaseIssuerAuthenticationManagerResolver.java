@@ -11,19 +11,28 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationManagerResolver;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtDecoders;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider;
 import org.springframework.stereotype.Component;
 
 @Component
 public class SupabaseIssuerAuthenticationManagerResolver
         implements AuthenticationManagerResolver<HttpServletRequest> {
+
+    private static final Logger logger = LoggerFactory.getLogger(
+        SupabaseIssuerAuthenticationManagerResolver.class
+    );
 
     private final AppBearerTokenResolver bearerTokenResolver;
     private final ObjectMapper objectMapper;
@@ -64,9 +73,27 @@ public class SupabaseIssuerAuthenticationManagerResolver
     }
 
     private AuthenticationManager buildAuthenticationManager(String issuer) {
-        JwtDecoder decoder = JwtDecoders.fromIssuerLocation(issuer);
+        JwtDecoder decoder = buildDecoder(issuer);
         JwtAuthenticationProvider provider = new JwtAuthenticationProvider(decoder);
         return new ProviderManager(provider);
+    }
+
+    private JwtDecoder buildDecoder(String issuer) {
+        try {
+            return JwtDecoders.fromIssuerLocation(issuer);
+        } catch (Exception discoveryError) {
+            String jwkSetUri = issuer + "/.well-known/jwks.json";
+            logger.warn(
+                    "Falling back to direct JWK set URI {} for issuer {}",
+                    jwkSetUri,
+                    issuer,
+                    discoveryError
+            );
+
+            NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
+            decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(issuer));
+            return decoder;
+        }
     }
 
     private Set<String> parseConfiguredIssuers(String primaryIssuer, String allowedIssuersCsv) {

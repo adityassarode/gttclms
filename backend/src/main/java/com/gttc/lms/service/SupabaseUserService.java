@@ -8,13 +8,18 @@ import com.gttc.lms.repository.UserRepository;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SupabaseUserService {
+    private static final Logger logger = LoggerFactory.getLogger(SupabaseUserService.class);
+
     private final UserRepository userRepository;
     private final EmailService emailService;
     private final String bootstrapAdminEmail;
@@ -42,22 +47,23 @@ public class SupabaseUserService {
         if (email == null) {
             email = subject + "@supabase.local";
         }
+        final String resolvedEmail = email;
 
-        String displayName = resolveDisplayName(jwt, email);
+        String displayName = resolveDisplayName(jwt, resolvedEmail);
         String phone = resolvePhone(jwt);
 
         Optional<User> byProviderId = userRepository.findByProviderAndProviderId(AuthProvider.SUPABASE, subject);
-        Optional<User> byEmail = userRepository.findByEmail(email);
+        Optional<User> byEmail = userRepository.findByEmail(resolvedEmail);
 
         User user = byProviderId.or(() -> byEmail).orElseGet(User::new);
         boolean isNew = user.getId() == null;
         boolean bootstrapAdmin = !bootstrapAdminEmail.isBlank()
-            && bootstrapAdminEmail.equalsIgnoreCase(email);
+            && bootstrapAdminEmail.equalsIgnoreCase(resolvedEmail);
 
         user.setProvider(AuthProvider.SUPABASE);
         user.setProviderId(subject);
         if (isNew || isBlank(user.getEmail())) {
-            user.setEmail(email);
+            user.setEmail(resolvedEmail);
         }
 
         if (isBlank(user.getName())) {
@@ -82,19 +88,35 @@ public class SupabaseUserService {
             user.setVerified(false);
         }
 
-        User saved = userRepository.save(user);
+        try {
+            User saved = userRepository.saveAndFlush(user);
 
-        if (isNew) {
+            if (isNew) {
+                sendWelcomeEmail(saved);
+            }
+
+            return saved;
+        } catch (DataIntegrityViolationException ex) {
+            // Concurrent requests can attempt first-time profile creation in parallel.
+            // If one transaction wins, resolve the existing record and continue.
+            return userRepository.findByProviderAndProviderId(AuthProvider.SUPABASE, subject)
+                    .or(() -> userRepository.findByEmail(resolvedEmail))
+                    .orElseThrow(() -> ex);
+        }
+    }
+
+    private void sendWelcomeEmail(User user) {
+        try {
             emailService.sendHtml(
-                    saved.getEmail(),
+                    user.getEmail(),
                     "Welcome to GTTC Library",
                     "<h2>Welcome to GTTC Library</h2>"
                             + "<p>Your account is now connected using Supabase authentication.</p>"
                             + "<p>You can complete student verification to unlock borrowing and reservations.</p>"
             );
+        } catch (Exception ex) {
+            logger.warn("Welcome email failed for {}", user.getEmail(), ex);
         }
-
-        return saved;
     }
 
     private String resolveDisplayName(Jwt jwt, String fallbackEmail) {

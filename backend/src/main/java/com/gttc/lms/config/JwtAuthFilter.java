@@ -26,6 +26,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserRepository userRepository;
     private final String localIssuerMarker;
+    private static final String LOCAL_USER_ROLE_MARKER = "\"role\":\"USER\"";
+    private static final String LOCAL_ADMIN_ROLE_MARKER = "\"role\":\"ADMIN\"";
 
     public JwtAuthFilter(
             JwtService jwtService,
@@ -75,7 +77,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         try {
             String payload = new String(Base64.getUrlDecoder().decode(parts[1]), StandardCharsets.UTF_8);
-            return payload.contains(localIssuerMarker);
+            return payload.contains(localIssuerMarker)
+                    && (payload.contains(LOCAL_USER_ROLE_MARKER) || payload.contains(LOCAL_ADMIN_ROLE_MARKER));
         } catch (IllegalArgumentException ex) {
             return false;
         }

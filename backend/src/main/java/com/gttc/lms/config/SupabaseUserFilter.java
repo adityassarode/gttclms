@@ -9,6 +9,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -19,6 +21,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 public class SupabaseUserFilter extends OncePerRequestFilter {
+    private static final Logger logger = LoggerFactory.getLogger(SupabaseUserFilter.class);
+
     private final SupabaseUserService supabaseUserService;
 
     public SupabaseUserFilter(SupabaseUserService supabaseUserService) {
@@ -54,7 +58,8 @@ public class SupabaseUserFilter extends OncePerRequestFilter {
 
                 SecurityContextHolder.getContext().setAuthentication(appAuth);
             } catch (Exception ex) {
-                SecurityContextHolder.clearContext();
+                // Preserve the verified JWT authentication instead of forcing anonymous 401.
+                logger.warn("Supabase user hydration failed for path {}", request.getRequestURI(), ex);
             }
         }
 
