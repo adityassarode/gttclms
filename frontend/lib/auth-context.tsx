@@ -12,6 +12,7 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   isAdmin: boolean;
   isReady: boolean;
+  setProfile: (profile: User | null) => void;
   signInWithPassword: (
     identifier: string,
     password: string,
@@ -33,6 +34,7 @@ const defaultValue: AuthContextValue = {
   isAuthenticated: false,
   isAdmin: false,
   isReady: false,
+  setProfile: () => {},
   signInWithPassword: noopUser,
   signInWithAdminCredentials: noopUser,
   signUpWithPassword: noopUser,
@@ -326,7 +328,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsReady(true);
         }
       })();
-    }, 6000);
+    }, 1000);
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -405,6 +407,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isReady,
       isAuthenticated: Boolean(user),
       isAdmin: user?.role === "ADMIN",
+      setProfile: setSessionUser,
       signInWithPassword,
       signInWithAdminCredentials,
       signUpWithPassword,
@@ -416,6 +419,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isReady,
       logout,
       refreshUser,
+      setSessionUser,
       signInWithAdminCredentials,
       signInWithGoogle,
       signInWithPassword,

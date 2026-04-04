@@ -41,13 +41,17 @@ function normalizeRedirectPath(path?: string | null) {
     return "/";
   }
 
+  if (path.startsWith("/verify")) {
+    return "/";
+  }
+
   return path;
 }
 
 function VerifyPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, refreshUser, isReady } = useAuth();
+  const { user, refreshUser, isReady, setProfile } = useAuth();
 
   const [registerNumber, setRegisterNumber] = React.useState(
     user?.registerNumber || "",
@@ -129,16 +133,24 @@ function VerifyPageContent() {
 
     setIsVerifying(true);
     try {
-      await api.verifyStudent({
+      const profile = await api.verifyStudent({
         registerNumber: registerNumber.trim().toUpperCase(),
         name: form.name,
         department: form.department,
         semester: form.semester,
         year: form.year,
       });
-      await refreshUser();
+
+      // Apply verified profile immediately so navigation does not wait on
+      // an additional /api/users/me round trip.
+      setProfile(profile);
       toast.success("Verification successful");
       router.push(redirectTo);
+
+      // Keep backend profile in sync without blocking UX.
+      void refreshUser().catch(() => {
+        // ignore background refresh failures
+      });
     } catch (error) {
       toast.error(getErrorMessage(error, "Verification failed"));
     } finally {

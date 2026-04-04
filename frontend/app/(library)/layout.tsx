@@ -203,7 +203,7 @@ export default function LibraryLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { user, isAuthenticated, isReady, logout } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [globalSearch, setGlobalSearch] = React.useState("");
   const [notificationCount, setNotificationCount] = React.useState(0);
@@ -264,15 +264,11 @@ export default function LibraryLayout({
 
       event.preventDefault();
 
-      if (!isReady) {
-        return;
-      }
-
       setSidebarOpen(false);
       toast.error("Please login to continue");
       router.push(`/login?redirect=${encodeURIComponent(href)}`);
     },
-    [isReady, router, user],
+    [router, user],
   );
 
   const handleGlobalSearch = React.useCallback(
@@ -348,10 +344,6 @@ export default function LibraryLayout({
                 className="relative"
                 onClick={() => {
                   if (!user) {
-                    if (!isReady) {
-                      return;
-                    }
-
                     toast.error("Please login to view notifications");
                     router.push("/login?redirect=%2Freserved");
                     return;

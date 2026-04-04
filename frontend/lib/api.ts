@@ -20,7 +20,22 @@ import type {
 } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 
-const REQUEST_TIMEOUT_MS = 15000;
+const REQUEST_TIMEOUT_MS = 10000;
+const LOOKUP_REQUEST_TIMEOUT_MS = 7000;
+const PUBLIC_GET_CACHE_TTL_MS = 15000;
+const TOKEN_CACHE_TTL_MS = 2500;
+
+type PublicGetCacheEntry = {
+  value: unknown;
+  expiresAt: number;
+};
+
+const publicGetResponseCache = new Map<string, PublicGetCacheEntry>();
+const publicGetInFlightRequests = new Map<string, Promise<unknown>>();
+
+let cachedAuthToken: string | null = null;
+let cachedAuthTokenAt = 0;
+let activeTokenRequest: Promise<string | null> | null = null;
 
 const CLOUD_API_BASE_URL =
   "https://gttclms-bvcyaudmh0ecebg5.centralindia-01.azurewebsites.net";
@@ -91,6 +106,19 @@ function getApiOrigin() {
   return `${url.protocol}//${url.host}`;
 }
 
+function requestMethod(options: RequestInit) {
+  return (options.method || "GET").toUpperCase();
+}
+
+function getPublicGetCacheKey(path: string, params?: Record<string, unknown>) {
+  return buildUrl(path, params);
+}
+
+function clearPublicGetCaches() {
+  publicGetResponseCache.clear();
+  publicGetInFlightRequests.clear();
+}
+
 function buildUrl(path: string, params?: Record<string, unknown>) {
   if (/^https?:\/\//i.test(path)) {
     return path;
@@ -151,28 +179,42 @@ function extractApiMessage(payload: unknown, fallback: string) {
   return fallback;
 }
 
-async function getActiveAuthToken() {
-  try {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) {
+async function getActiveAuthToken(forceRefresh = false) {
+  const now = Date.now();
+
+  if (!forceRefresh && now - cachedAuthTokenAt < TOKEN_CACHE_TTL_MS) {
+    return cachedAuthToken;
+  }
+
+  if (!forceRefresh && activeTokenRequest) {
+    return activeTokenRequest;
+  }
+
+  activeTokenRequest = (async () => {
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      const token = error ? null : (data.session?.access_token ?? null);
+      cachedAuthToken = token;
+      cachedAuthTokenAt = Date.now();
+      return token;
+    } catch {
+      cachedAuthToken = null;
+      cachedAuthTokenAt = Date.now();
       return null;
     }
-    return data.session?.access_token ?? null;
+  })();
+
+  try {
+    return await activeTokenRequest;
   } catch {
     return null;
+  } finally {
+    activeTokenRequest = null;
   }
 }
 
 async function hasActiveSession() {
-  try {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) {
-      return false;
-    }
-    return Boolean(data.session?.access_token);
-  } catch {
-    return false;
-  }
+  return Boolean(await getActiveAuthToken());
 }
 
 async function request<T>(
@@ -182,114 +224,178 @@ async function request<T>(
   params?: Record<string, unknown>,
   includeAuth = true,
   authTokenOverride?: string | null,
+  timeoutMs = REQUEST_TIMEOUT_MS,
 ): Promise<T> {
-  const headers = new Headers(options.headers);
-  let token = includeAuth
-    ? (authTokenOverride ?? (await getActiveAuthToken()))
+  const method = requestMethod(options);
+  const canUsePublicGetCache = !includeAuth && method === "GET";
+  const cacheKey = canUsePublicGetCache
+    ? getPublicGetCacheKey(path, params)
     : null;
 
-  if (includeAuth && !token && !authTokenOverride) {
-    try {
-      const { data, error } = await supabase.auth.refreshSession();
-      token = error ? null : (data.session?.access_token ?? null);
-    } catch {
-      token = null;
+  if (cacheKey) {
+    const cached = publicGetResponseCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.value as T;
+    }
+
+    if (cached) {
+      publicGetResponseCache.delete(cacheKey);
+    }
+
+    const inflight = publicGetInFlightRequests.get(cacheKey);
+    if (inflight) {
+      return inflight as Promise<T>;
     }
   }
 
-  if (includeAuth && !token) {
-    throw new Error("Authentication required");
+  if (method !== "GET") {
+    clearPublicGetCaches();
   }
 
-  const isFormBody =
-    typeof FormData !== "undefined" && options.body instanceof FormData;
+  const exec = async () => {
+    const headers = new Headers(options.headers);
+    let token = includeAuth
+      ? (authTokenOverride ?? (await getActiveAuthToken()))
+      : null;
 
-  const send = async (activeToken: string | null) => {
-    const requestHeaders = new Headers(headers);
-
-    if (activeToken) {
-      requestHeaders.set("Authorization", `Bearer ${activeToken}`);
+    if (includeAuth && !token && !authTokenOverride) {
+      try {
+        const { data, error } = await supabase.auth.refreshSession();
+        token = error ? null : (data.session?.access_token ?? null);
+        cachedAuthToken = token;
+        cachedAuthTokenAt = Date.now();
+      } catch {
+        token = null;
+        cachedAuthToken = null;
+        cachedAuthTokenAt = Date.now();
+      }
     }
 
-    if (!isFormBody && options.body && !requestHeaders.has("Content-Type")) {
-      requestHeaders.set("Content-Type", "application/json");
+    if (includeAuth && !token) {
+      throw new Error("Authentication required");
     }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const isFormBody =
+      typeof FormData !== "undefined" && options.body instanceof FormData;
+
+    const send = async (activeToken: string | null) => {
+      const requestHeaders = new Headers(headers);
+
+      if (activeToken) {
+        requestHeaders.set("Authorization", `Bearer ${activeToken}`);
+      }
+
+      if (!isFormBody && options.body && !requestHeaders.has("Content-Type")) {
+        requestHeaders.set("Content-Type", "application/json");
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        return await fetch(buildUrl(path, params), {
+          ...options,
+          headers: requestHeaders,
+          signal: options.signal || controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    };
+
+    let response: Response;
 
     try {
-      return await fetch(buildUrl(path, params), {
-        ...options,
-        headers: requestHeaders,
-        signal: options.signal || controller.signal,
-      });
-    } finally {
-      clearTimeout(timeoutId);
+      response = await send(token);
+    } catch (error) {
+      const isAbortError =
+        error instanceof DOMException && error.name === "AbortError";
+      if (isAbortError) {
+        throw new Error(`${fallbackMessage} (timeout)`);
+      }
+      throw new Error(fallbackMessage);
     }
+
+    if (includeAuth && response.status === 401 && !authTokenOverride) {
+      try {
+        const { data, error } = await supabase.auth.refreshSession();
+        const refreshedToken = error
+          ? null
+          : (data.session?.access_token ?? null);
+
+        cachedAuthToken = refreshedToken;
+        cachedAuthTokenAt = Date.now();
+
+        if (refreshedToken) {
+          response = await send(refreshedToken);
+        }
+      } catch {
+        cachedAuthToken = null;
+        cachedAuthTokenAt = Date.now();
+        // keep original 401 response when refresh fails
+      }
+    }
+
+    const raw = await response.text();
+    let payload: unknown = undefined;
+
+    if (raw) {
+      try {
+        payload = JSON.parse(raw);
+      } catch {
+        payload = raw;
+      }
+    }
+
+    if (!response.ok) {
+      if (includeAuth && response.status === 401) {
+        const stillAuthenticated = await hasActiveSession();
+        const fallback = stillAuthenticated
+          ? "Unauthorized for this request"
+          : "Session expired. Please login again.";
+        throw new Error(extractApiMessage(payload, fallback));
+      }
+
+      if (includeAuth && response.status === 403) {
+        throw new Error(extractApiMessage(payload, "Access denied"));
+      }
+
+      throw new Error(
+        extractApiMessage(
+          payload,
+          `${fallbackMessage}${response.status ? ` (${response.status})` : ""}`,
+        ),
+      );
+    }
+
+    return payload as T;
   };
 
-  let response: Response;
+  if (!cacheKey) {
+    return exec();
+  }
+
+  const promise = exec();
+  publicGetInFlightRequests.set(cacheKey, promise as Promise<unknown>);
 
   try {
-    response = await send(token);
-  } catch (error) {
-    const isAbortError =
-      error instanceof DOMException && error.name === "AbortError";
-    if (isAbortError) {
-      throw new Error(`${fallbackMessage} (timeout)`);
-    }
-    throw new Error(fallbackMessage);
+    const result = await promise;
+    publicGetResponseCache.set(cacheKey, {
+      value: result,
+      expiresAt: Date.now() + PUBLIC_GET_CACHE_TTL_MS,
+    });
+    return result;
+  } finally {
+    publicGetInFlightRequests.delete(cacheKey);
+  }
+}
+
+function toBrowserOriginUrl(path: string) {
+  if (!isBrowser()) {
+    return path;
   }
 
-  if (includeAuth && response.status === 401 && !authTokenOverride) {
-    try {
-      const { data, error } = await supabase.auth.refreshSession();
-      const refreshedToken = error
-        ? null
-        : (data.session?.access_token ?? null);
-
-      if (refreshedToken) {
-        response = await send(refreshedToken);
-      }
-    } catch {
-      // keep original 401 response when refresh fails
-    }
-  }
-
-  const raw = await response.text();
-  let payload: unknown = undefined;
-
-  if (raw) {
-    try {
-      payload = JSON.parse(raw);
-    } catch {
-      payload = raw;
-    }
-  }
-
-  if (!response.ok) {
-    if (includeAuth && response.status === 401) {
-      const stillAuthenticated = await hasActiveSession();
-      const fallback = stillAuthenticated
-        ? "Unauthorized for this request"
-        : "Session expired. Please login again.";
-      throw new Error(extractApiMessage(payload, fallback));
-    }
-
-    if (includeAuth && response.status === 403) {
-      throw new Error(extractApiMessage(payload, "Access denied"));
-    }
-
-    throw new Error(
-      extractApiMessage(
-        payload,
-        `${fallbackMessage}${response.status ? ` (${response.status})` : ""}`,
-      ),
-    );
-  }
-
-  return payload as T;
+  return new URL(path, window.location.origin).toString();
 }
 
 function normalizeBookPayload(payload: BookUpsertPayload) {
@@ -631,14 +737,75 @@ export const api = {
     );
   },
 
-  lookupStudent(registerNumber: string) {
-    return request<StudentResponse>(
-      `/api/students/${encodeURIComponent(registerNumber)}`,
-      {},
-      "Unable to find student",
-      undefined,
-      false,
+  async lookupStudent(registerNumber: string) {
+    const normalized = registerNumber.trim().toUpperCase();
+    const encoded = encodeURIComponent(normalized);
+
+    const attempts: Array<{ path: string; params?: Record<string, unknown> }> =
+      [
+        { path: `/api/students/${encoded}` },
+        { path: `/api/student/${encoded}` },
+        { path: "/api/student", params: { registerNumber: normalized } },
+      ];
+
+    if (isBrowser()) {
+      attempts.push(
+        { path: toBrowserOriginUrl(`/api/students/${encoded}`) },
+        { path: toBrowserOriginUrl(`/api/student/${encoded}`) },
+        {
+          path: toBrowserOriginUrl("/api/student"),
+          params: { registerNumber: normalized },
+        },
+      );
+    }
+
+    // Remove duplicate attempts before dispatching parallel requests.
+    const unique = new Map<
+      string,
+      { path: string; params?: Record<string, unknown> }
+    >();
+    attempts.forEach((attempt) => {
+      const key = `${attempt.path}|${JSON.stringify(attempt.params || {})}`;
+      if (!unique.has(key)) {
+        unique.set(key, attempt);
+      }
+    });
+
+    const tasks = [...unique.values()].map((attempt) =>
+      request<StudentResponse>(
+        attempt.path,
+        {},
+        "Unable to find student",
+        attempt.params,
+        false,
+        undefined,
+        LOOKUP_REQUEST_TIMEOUT_MS,
+      ),
     );
+
+    try {
+      return await Promise.any(tasks);
+    } catch (error) {
+      const errors = error instanceof AggregateError ? error.errors : [error];
+
+      const notFound = errors.find((item) => {
+        if (!(item instanceof Error)) {
+          return false;
+        }
+        return item.message.toLowerCase().includes("register number not found");
+      });
+
+      if (notFound instanceof Error) {
+        throw notFound;
+      }
+
+      const first = errors.find((item): item is Error => item instanceof Error);
+      if (first) {
+        throw first;
+      }
+
+      throw new Error("Unable to find student");
+    }
   },
 
   verifyStudent(payload: VerifyStudentPayload) {

@@ -148,6 +148,11 @@ export default function BookDetailPage() {
       return;
     }
 
+    if (book.copiesAvailable <= 0) {
+      toast.error("No copies are currently available");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await api.borrowBook(book.id);
@@ -165,6 +170,11 @@ export default function BookDetailPage() {
 
   const handleReserve = async () => {
     if (!book || !requireLogin(`/book/${bookId}`)) {
+      return;
+    }
+
+    if (book.copiesAvailable <= 0) {
+      toast.error("No copies are currently available");
       return;
     }
 
@@ -251,6 +261,7 @@ export default function BookDetailPage() {
   }
 
   const isAvailable = book.copiesAvailable > 0;
+  const allowGuestActionRedirect = !isAuthenticated;
   const bookRating = Math.max(
     3.8,
     Math.min(5, 4 + book.copiesAvailable / Math.max(book.copiesTotal, 1)),
@@ -288,7 +299,9 @@ export default function BookDetailPage() {
           <div className="space-y-3">
             <Button
               className="w-full h-12 text-base font-medium rounded-xl"
-              disabled={!isAvailable || isSubmitting}
+              disabled={
+                isSubmitting || (!allowGuestActionRedirect && !isAvailable)
+              }
               onClick={handleBorrow}
             >
               <BookMarked className="mr-2 h-5 w-5" />
@@ -297,7 +310,9 @@ export default function BookDetailPage() {
             <Button
               variant="outline"
               className="w-full h-12 text-base font-medium rounded-xl"
-              disabled={!isAvailable || isSubmitting}
+              disabled={
+                isSubmitting || (!allowGuestActionRedirect && !isAvailable)
+              }
               onClick={handleReserve}
             >
               <Clock className="mr-2 h-5 w-5" />

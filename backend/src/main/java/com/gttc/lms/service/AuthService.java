@@ -14,7 +14,6 @@ import com.gttc.lms.model.User;
 import com.gttc.lms.model.enums.AuthProvider;
 import com.gttc.lms.model.enums.Role;
 import com.gttc.lms.model.enums.UserStatus;
-import com.gttc.lms.repository.StudentRepository;
 import com.gttc.lms.repository.UserRepository;
 import java.util.Locale;
 import java.util.Optional;
@@ -27,7 +26,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @Service
 public class AuthService {
     private final UserRepository userRepository;
-    private final StudentRepository studentRepository;
+    private final StudentService studentService;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
@@ -39,7 +38,7 @@ public class AuthService {
     private final boolean allowTestToken;
 
     public AuthService(UserRepository userRepository,
-                       StudentRepository studentRepository,
+                       StudentService studentService,
                        JwtService jwtService,
                        PasswordEncoder passwordEncoder,
                        EmailService emailService,
@@ -48,7 +47,7 @@ public class AuthService {
                        @Value("${app.google.clientId}") String googleClientId,
                        @Value("${app.google.allowTestToken}") boolean allowTestToken) {
         this.userRepository = userRepository;
-        this.studentRepository = studentRepository;
+        this.studentService = studentService;
         this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
@@ -137,8 +136,7 @@ public class AuthService {
 
     public UserResponse verifyStudent(User user, VerifyStudentRequest request) {
         String registerNumber = request.getRegisterNumber().trim();
-        Student student = studentRepository.findByRegisterNumber(registerNumber)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Register number not found"));
+        Student student = studentService.findByRegisterNumber(registerNumber);
         user.setRegisterNumber(student.getRegisterNumber());
         user.setName(request.getName() != null && !request.getName().isBlank() ? request.getName() : student.getName());
         user.setDepartment(request.getDepartment() != null && !request.getDepartment().isBlank()

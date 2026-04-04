@@ -5,6 +5,7 @@ import com.gttc.lms.exception.ApiException;
 import com.gttc.lms.model.Student;
 import com.gttc.lms.repository.StudentRepository;
 import java.io.InputStream;
+import java.util.Locale;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.poi.ss.usermodel.Cell;
@@ -14,6 +15,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
@@ -24,17 +26,28 @@ public class StudentService {
         this.studentRepository = studentRepository;
     }
 
+    @Transactional(readOnly = true)
     public Student findByRegisterNumber(String registerNumber) {
-        return studentRepository.findByRegisterNumber(registerNumber)
+        String raw = sanitizeRegisterNumber(registerNumber);
+        String normalized = normalizeRegisterNumber(raw);
+
+        return studentRepository.findByRegisterNumber(raw)
+                .or(() -> studentRepository.findFirstByRegisterNumberIgnoreCase(raw))
+                .or(() -> normalized.isEmpty()
+                        ? java.util.Optional.empty()
+                        : studentRepository.findByRegisterNumberNormalized(normalized))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Register number not found"));
     }
 
     public Student addStudent(StudentRequest request) {
-        studentRepository.findByRegisterNumber(request.getRegisterNumber()).ifPresent(existing -> {
+        String registerNumber = sanitizeRegisterNumber(request.getRegisterNumber());
+
+        findExistingByRegisterNumber(registerNumber).ifPresent(existing -> {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Register number already exists");
         });
+
         Student student = new Student();
-        student.setRegisterNumber(request.getRegisterNumber());
+        student.setRegisterNumber(registerNumber);
         student.setName(request.getName());
         student.setDepartment(request.getDepartment());
         student.setSemester(request.getSemester());
@@ -63,7 +76,7 @@ public class StudentService {
                 if (registerNumber.isBlank() || name.isBlank()) {
                     continue;
                 }
-                studentRepository.findByRegisterNumber(registerNumber).ifPresentOrElse(existing -> {
+                findExistingByRegisterNumber(registerNumber).ifPresentOrElse(existing -> {
                     existing.setName(name);
                     existing.setDepartment(department);
                     existing.setSemester(semester);
@@ -95,5 +108,30 @@ public class StudentService {
             case BOOLEAN -> String.valueOf(cell.getBooleanCellValue()).trim();
             default -> "";
         };
+    }
+
+    private java.util.Optional<Student> findExistingByRegisterNumber(String registerNumber) {
+        String raw = sanitizeRegisterNumber(registerNumber);
+        String normalized = normalizeRegisterNumber(raw);
+
+        return studentRepository.findByRegisterNumber(raw)
+                .or(() -> studentRepository.findFirstByRegisterNumberIgnoreCase(raw))
+                .or(() -> normalized.isEmpty()
+                        ? java.util.Optional.empty()
+                        : studentRepository.findByRegisterNumberNormalized(normalized));
+    }
+
+    private String sanitizeRegisterNumber(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim();
+    }
+
+    private String normalizeRegisterNumber(String value) {
+        return sanitizeRegisterNumber(value)
+                .replace(" ", "")
+                .replace("-", "")
+                .toUpperCase(Locale.ROOT);
     }
 }

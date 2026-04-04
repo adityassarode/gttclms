@@ -95,16 +95,12 @@ export function useProtectedAdminPage() {
 export function useRequireLoginAction() {
   const pathname = usePathname();
   const router = useRouter();
-  const { isReady, user } = useAuth();
+  const { user } = useAuth();
   const needsVerification = user && user.role === "USER" && !user.verified;
 
   return React.useCallback(
     (redirectPath?: string) => {
       const target = normalizeRedirectPath(redirectPath || pathname);
-
-      if (!isReady) {
-        return false;
-      }
 
       if (!user) {
         router.push(loginPath(target));
@@ -118,6 +114,6 @@ export function useRequireLoginAction() {
 
       return true;
     },
-    [isReady, needsVerification, pathname, router, user],
+    [needsVerification, pathname, router, user],
   );
 }
