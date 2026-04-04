@@ -28,6 +28,22 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+function normalizeRedirectPath(path?: string | null) {
+  if (!path) {
+    return "/";
+  }
+
+  if (!path.startsWith("/")) {
+    return "/";
+  }
+
+  if (path.startsWith("/login") || path.startsWith("/admin/login")) {
+    return "/";
+  }
+
+  return path;
+}
+
 function VerifyPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -46,14 +62,34 @@ function VerifyPageContent() {
   const [isLooking, setIsLooking] = React.useState(false);
   const [isVerifying, setIsVerifying] = React.useState(false);
 
-  const redirectTo = searchParams.get("redirect") || "/";
+  const redirectTo = normalizeRedirectPath(searchParams.get("redirect"));
+
+  React.useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    setRegisterNumber(user.registerNumber || "");
+    setForm({
+      name: user.name || "",
+      department: user.department || "",
+      semester: user.semester || "",
+      year: user.year || "",
+    });
+  }, [user]);
 
   React.useEffect(() => {
     if (!isReady) {
       return;
     }
 
-    if (user?.verified) {
+    if (!user) {
+      const verifyPath = `/verify?redirect=${encodeURIComponent(redirectTo)}`;
+      router.replace(`/login?redirect=${encodeURIComponent(verifyPath)}`);
+      return;
+    }
+
+    if (user.verified) {
       router.replace(redirectTo);
     }
   }, [isReady, redirectTo, router, user]);
@@ -126,7 +162,18 @@ function VerifyPageContent() {
   }
 
   if (!user) {
-    return null;
+    return (
+      <Card className="w-full max-w-lg overflow-hidden border-border/50 shadow-xl shadow-primary/5">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-bold">
+            Redirecting to login...
+          </CardTitle>
+          <CardDescription>
+            Your session is not available yet. Please sign in to continue.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
   }
 
   return (
