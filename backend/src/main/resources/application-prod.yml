@@ -26,3 +26,6 @@ app:
     enabled: ${APP_WARMUP_ENABLED:true}
     fixedDelayMs: ${APP_WARMUP_FIXED_DELAY_MS:300000}
     initialDelayMs: ${APP_WARMUP_INITIAL_DELAY_MS:120000}
+  demo:
+    openAccess: ${APP_DEMO_OPEN_ACCESS:true}
+    userEmail: ${APP_DEMO_USER_EMAIL:demo@gttc.local}
