@@ -24,6 +24,7 @@ const REQUEST_TIMEOUT_MS = 20000;
 const LOOKUP_REQUEST_TIMEOUT_MS = 15000;
 const PUBLIC_GET_CACHE_TTL_MS = 15000;
 const TOKEN_CACHE_TTL_MS = 2500;
+const AUTH_ME_CACHE_TTL_MS = 1500;
 
 type PublicGetCacheEntry = {
   value: unknown;
@@ -32,6 +33,9 @@ type PublicGetCacheEntry = {
 
 const publicGetResponseCache = new Map<string, PublicGetCacheEntry>();
 const publicGetInFlightRequests = new Map<string, Promise<unknown>>();
+
+let meInFlightRequest: Promise<User> | null = null;
+let meCachedProfile: { value: User; expiresAt: number } | null = null;
 
 let cachedAuthToken: string | null = null;
 let cachedAuthTokenAt = 0;
@@ -514,7 +518,15 @@ export const api = {
   },
 
   getMe(authTokenOverride?: string | null) {
-    return request<User>(
+    if (meCachedProfile && meCachedProfile.expiresAt > Date.now()) {
+      return Promise.resolve(meCachedProfile.value);
+    }
+
+    if (meInFlightRequest) {
+      return meInFlightRequest;
+    }
+
+    const exec = request<User>(
       "/api/users/me",
       {},
       "Unable to load profile",
@@ -522,6 +534,24 @@ export const api = {
       true,
       authTokenOverride,
     );
+
+    meInFlightRequest = exec
+      .then((profile) => {
+        meCachedProfile = {
+          value: profile,
+          expiresAt: Date.now() + AUTH_ME_CACHE_TTL_MS,
+        };
+        return profile;
+      })
+      .catch((error) => {
+        meCachedProfile = null;
+        throw error;
+      })
+      .finally(() => {
+        meInFlightRequest = null;
+      });
+
+    return meInFlightRequest;
   },
 
   getBooks(params?: { q?: string; category?: string; featured?: boolean }) {
@@ -774,41 +804,40 @@ export const api = {
       }
     });
 
-    const tasks = [...unique.values()].map((attempt) =>
-      request<StudentResponse>(
-        attempt.path,
-        {},
-        "Unable to find student",
-        attempt.params,
-        false,
-        undefined,
-        LOOKUP_REQUEST_TIMEOUT_MS,
-      ),
+    const errors: Error[] = [];
+
+    for (const attempt of unique.values()) {
+      try {
+        return await request<StudentResponse>(
+          attempt.path,
+          {},
+          "Unable to find student",
+          attempt.params,
+          false,
+          undefined,
+          LOOKUP_REQUEST_TIMEOUT_MS,
+        );
+      } catch (error) {
+        if (error instanceof Error) {
+          errors.push(error);
+          continue;
+        }
+      }
+    }
+
+    const notFound = errors.find((item) =>
+      item.message.toLowerCase().includes("register number not found"),
     );
 
-    try {
-      return await Promise.any(tasks);
-    } catch (error) {
-      const errors = error instanceof AggregateError ? error.errors : [error];
-
-      const notFound = errors.find((item) => {
-        if (!(item instanceof Error)) {
-          return false;
-        }
-        return item.message.toLowerCase().includes("register number not found");
-      });
-
-      if (notFound instanceof Error) {
-        throw notFound;
-      }
-
-      const first = errors.find((item): item is Error => item instanceof Error);
-      if (first) {
-        throw first;
-      }
-
-      throw new Error("Unable to find student");
+    if (notFound) {
+      throw notFound;
     }
+
+    if (errors.length > 0) {
+      throw errors[0];
+    }
+
+    throw new Error("Unable to find student");
   },
 
   verifyStudent(payload: VerifyStudentPayload) {
@@ -819,7 +848,13 @@ export const api = {
         body: JSON.stringify(payload),
       },
       "Unable to verify student",
-    );
+    ).then((profile) => {
+      meCachedProfile = {
+        value: profile,
+        expiresAt: Date.now() + AUTH_ME_CACHE_TTL_MS,
+      };
+      return profile;
+    });
   },
 };
 

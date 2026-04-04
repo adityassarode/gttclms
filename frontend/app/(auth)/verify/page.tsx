@@ -51,7 +51,7 @@ function normalizeRedirectPath(path?: string | null) {
 function VerifyPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, refreshUser, isReady, setProfile } = useAuth();
+  const { user, isReady, setProfile } = useAuth();
 
   const [registerNumber, setRegisterNumber] = React.useState(
     user?.registerNumber || "",
@@ -166,11 +166,6 @@ function VerifyPageContent() {
       } else {
         router.push(destination);
       }
-
-      // Keep backend profile in sync without blocking UX.
-      void refreshUser().catch(() => {
-        // ignore background refresh failures
-      });
     } catch (error) {
       toast.error(getErrorMessage(error, "Verification failed"));
     } finally {

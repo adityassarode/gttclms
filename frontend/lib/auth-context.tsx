@@ -336,7 +336,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
+        if (event === "INITIAL_SESSION") {
+          return;
+        }
+
         if (session?.access_token) {
+          if (event !== "TOKEN_REFRESHED" && event !== "USER_UPDATED") {
+            return;
+          }
+
           try {
             const profile = await api.getMe(session.access_token);
             if (!cancelled) {

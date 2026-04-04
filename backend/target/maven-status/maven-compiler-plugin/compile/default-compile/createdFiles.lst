@@ -10,6 +10,7 @@ com/gttc/lms/dto/AnalyticsResponse$TrendPoint.class
 com/gttc/lms/service/DonationService.class
 com/gttc/lms/dto/VerifyStudentRequest.class
 com/gttc/lms/dto/BookRequest.class
+com/gttc/lms/config/SupabaseUserFilter$1.class
 com/gttc/lms/dto/ReservationResponse.class
 com/gttc/lms/dto/AnalyticsResponse$MetricPoint.class
 com/gttc/lms/dto/AuthResponse.class
