@@ -29,6 +29,7 @@ public class SecurityConfig {
     private final AppBearerTokenResolver appBearerTokenResolver;
     private final JwtAuthFilter jwtAuthFilter;
     private final SupabaseUserFilter supabaseUserFilter;
+    private final SupabaseIssuerAuthenticationManagerResolver supabaseIssuerAuthenticationManagerResolver;
     private final AuthenticationEntryPoint authenticationEntryPoint;
     private final AccessDeniedHandler accessDeniedHandler;
 
@@ -38,6 +39,7 @@ public class SecurityConfig {
             AppBearerTokenResolver appBearerTokenResolver,
             JwtAuthFilter jwtAuthFilter,
             SupabaseUserFilter supabaseUserFilter,
+                SupabaseIssuerAuthenticationManagerResolver supabaseIssuerAuthenticationManagerResolver,
             AuthenticationEntryPoint authenticationEntryPoint,
             AccessDeniedHandler accessDeniedHandler
     ) {
@@ -46,6 +48,7 @@ public class SecurityConfig {
         this.appBearerTokenResolver = appBearerTokenResolver;
         this.jwtAuthFilter = jwtAuthFilter;
         this.supabaseUserFilter = supabaseUserFilter;
+        this.supabaseIssuerAuthenticationManagerResolver = supabaseIssuerAuthenticationManagerResolver;
         this.authenticationEntryPoint = authenticationEntryPoint;
         this.accessDeniedHandler = accessDeniedHandler;
     }
@@ -73,7 +76,7 @@ public class SecurityConfig {
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
                     .bearerTokenResolver(appBearerTokenResolver)
-                    .jwt(Customizer.withDefaults())
+                    .authenticationManagerResolver(supabaseIssuerAuthenticationManagerResolver)
                     .authenticationEntryPoint(authenticationEntryPoint)
                 )
                 .exceptionHandling(ex -> ex

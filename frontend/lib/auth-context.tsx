@@ -277,6 +277,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const profile = await api.getMe();
       setSessionUser(profile);
     } catch {
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        if (!error) {
+          const fallbackProfile = buildFallbackUserProfile(
+            data.user as SupabaseSessionUser,
+          );
+          if (fallbackProfile) {
+            setSessionUser(fallbackProfile);
+            throw new Error("Profile sync is pending. Please try again.");
+          }
+        }
+      } catch {
+        // ignore and fall back to session-expired handling below
+      }
+
       setSessionUser(null);
       throw new Error("Session expired. Please login again.");
     }
@@ -340,12 +355,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const hydrate = async () => {
       let accessToken: string | null = null;
+      let sessionUser: SupabaseSessionUser | null = null;
 
       try {
         const { data } = await supabase.auth.getSession();
         accessToken = data.session?.access_token ?? null;
+        sessionUser = (data.session?.user as SupabaseSessionUser) ?? null;
       } catch {
         accessToken = null;
+        sessionUser = null;
       }
 
       try {
@@ -361,8 +379,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSessionUser(profile);
         }
       } catch {
+        const fallbackProfile = buildFallbackUserProfile(sessionUser);
         if (!cancelled) {
-          setSessionUser(null);
+          setSessionUser(fallbackProfile);
         }
       } finally {
         if (!cancelled) {

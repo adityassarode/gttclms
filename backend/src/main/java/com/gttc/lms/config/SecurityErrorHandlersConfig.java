@@ -21,8 +21,18 @@ public class SecurityErrorHandlersConfig {
 
     @Bean
     public AuthenticationEntryPoint authenticationEntryPoint() {
-        return (request, response, authException) ->
-                writeJsonError(response, HttpServletResponse.SC_UNAUTHORIZED, "Authentication required");
+        return (request, response, authException) -> {
+            String message = "Authentication required";
+
+            if (authException != null && authException.getMessage() != null) {
+                String detail = authException.getMessage().trim();
+                if (!detail.isEmpty()) {
+                    message = detail;
+                }
+            }
+
+            writeJsonError(response, HttpServletResponse.SC_UNAUTHORIZED, message);
+        };
     }
 
     @Bean

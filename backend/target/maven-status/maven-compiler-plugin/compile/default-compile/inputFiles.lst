@@ -5,6 +5,7 @@
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/model/Student.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/service/AdminService.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/service/AuthService.java
+/workspaces/gttclms/backend/src/main/java/com/gttc/lms/config/SupabaseIssuerAuthenticationManagerResolver.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/model/Donation.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/dto/DonationResponse.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/dto/BookResponse.java

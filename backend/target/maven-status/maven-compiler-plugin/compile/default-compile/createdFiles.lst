@@ -28,6 +28,7 @@ com/gttc/lms/dto/StudentResponse.class
 com/gttc/lms/service/SeedDataRunner.class
 com/gttc/lms/controller/UserController.class
 com/gttc/lms/repository/ReservationRepository.class
+com/gttc/lms/config/SupabaseIssuerAuthenticationManagerResolver.class
 com/gttc/lms/controller/BookController.class
 com/gttc/lms/config/SupabaseUserFilter.class
 com/gttc/lms/model/Reservation.class
@@ -49,6 +50,7 @@ com/gttc/lms/config/SecurityErrorHandlersConfig.class
 com/gttc/lms/model/enums/Role.class
 com/gttc/lms/service/BookService.class
 com/gttc/lms/model/enums/AuthProvider.class
+com/gttc/lms/config/SupabaseIssuerAuthenticationManagerResolver$1.class
 com/gttc/lms/dto/BorrowResponse.class
 com/gttc/lms/repository/UserRepository.class
 com/gttc/lms/dto/BookResponse.class
