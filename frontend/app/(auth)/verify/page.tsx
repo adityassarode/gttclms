@@ -64,7 +64,7 @@ function VerifyPageContent() {
     year: user?.year || "",
   });
   const [isLooking, setIsLooking] = React.useState(false);
-  const [isVerifying, setIsVerifying] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
 
   const redirectTo = normalizeRedirectPath(searchParams.get("redirect"));
 
@@ -125,14 +125,28 @@ function VerifyPageContent() {
     }
   };
 
-  const handleVerify = async () => {
+  const handleConfirm = async (event?: React.SyntheticEvent) => {
+    event?.preventDefault();
+    console.log("clicked");
+
     if (!registerNumber.trim()) {
       toast.error("Register number is required");
       return;
     }
 
-    setIsVerifying(true);
+    if (!student) {
+      toast.error("Please lookup your student record first");
+      return;
+    }
+
+    if (loading) {
+      return;
+    }
+
+    setLoading(true);
     try {
+      console.log("sending verify request");
+
       const profile = await api.verifyStudent({
         registerNumber: registerNumber.trim().toUpperCase(),
         name: form.name,
@@ -145,7 +159,13 @@ function VerifyPageContent() {
       // an additional /api/users/me round trip.
       setProfile(profile);
       toast.success("Verification successful");
-      router.push(redirectTo);
+
+      const destination = normalizeRedirectPath(redirectTo);
+      if (typeof window !== "undefined") {
+        window.location.href = destination;
+      } else {
+        router.push(destination);
+      }
 
       // Keep backend profile in sync without blocking UX.
       void refreshUser().catch(() => {
@@ -154,7 +174,7 @@ function VerifyPageContent() {
     } catch (error) {
       toast.error(getErrorMessage(error, "Verification failed"));
     } finally {
-      setIsVerifying(false);
+      setLoading(false);
     }
   };
 
@@ -310,15 +330,16 @@ function VerifyPageContent() {
             </div>
 
             <Button
-              onClick={handleVerify}
+              type="button"
+              onClick={handleConfirm}
               className="h-11 w-full rounded-xl font-medium"
-              disabled={!student || isVerifying}
+              disabled={!student || loading}
             >
-              {isVerifying ? (
+              {loading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
               Confirm and Continue
-              {!isVerifying && <ArrowRight className="ml-2 h-4 w-4" />}
+              {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
             </Button>
           </div>
         )}
