@@ -192,7 +192,7 @@ function LoginPageContent() {
           toast.success("Please check your email to complete sign-up.");
         } else {
           toast.error(
-            "Authenticated, but backend profile is not ready yet. If using Render, wait 30-60 seconds and try again.",
+            "Authenticated, but backend profile is not ready yet. Wait 30-60 seconds and try again.",
           );
         }
         return;

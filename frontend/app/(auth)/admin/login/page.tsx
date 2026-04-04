@@ -114,7 +114,7 @@ export default function AdminLoginPage() {
 
       if (!profile) {
         toast.error(
-          "Authenticated, but backend profile is not ready yet. If using Render, wait 30-60 seconds and try again.",
+          "Authenticated, but backend profile is not ready yet. Wait 30-60 seconds and try again.",
         );
         return;
       }

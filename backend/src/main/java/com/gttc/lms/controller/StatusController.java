@@ -8,12 +8,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class StatusController {
 
     @GetMapping("/")
-    public Map<String, String> root() {
-        return Map.of(
-                "name", "GTTC LMS Backend",
-                "status", "ok",
-                "booksEndpoint", "/api/books"
-        );
+    public String home() {
+        return "Backend running - Aditya Sarode";
     }
 
     @GetMapping("/health")

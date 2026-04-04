@@ -1,28 +1,29 @@
-Runtime requirements (Render)
+Runtime requirements
 - Java 17
 - Maven 3.9+
 
 Required environment variables
 - SPRING_PROFILES_ACTIVE=prod
 - SUPABASE_ISSUER_URI=https://rtfxnjhmvzpwaknakwcj.supabase.co/auth/v1
-
-- SPRING_DATASOURCE_URL=jdbc:postgresql://db.rtfxnjhmvzpwaknakwcj.supabase.co:5432/postgres
-- SPRING_DATASOURCE_USERNAME=postgres
-- SPRING_DATASOURCE_PASSWORD=Aditya@#2509
-
+- SPRING_DATASOURCE_URL=jdbc:postgresql://<db-host>:5432/<db-name>
+- SPRING_DATASOURCE_USERNAME=<db-username>
+- SPRING_DATASOURCE_PASSWORD=<db-password>
 - APP_FRONTEND_URLS=http://localhost:3000,https://gttclms.vercel.app
 
-# Optional admin auto setup
-- APP_ADMIN_BOOTSTRAP_EMAIL=adityassarode.work@gmail.com
+Optional admin bootstrap
+- APP_ADMIN_BOOTSTRAP_EMAIL=<admin-email>
 
 Mail variables (SMTP)
 - MAIL_HOST=smtp.gmail.com
 - MAIL_PORT=587
-- MAIL_USERNAME=gttclmss@gmail.com
-- MAIL_PASSWORD=rozj oybt xled cxjv
-- APP_MAIL_FROM=gttclmss@gmail.com
+- MAIL_USERNAME=<smtp-username>
+- MAIL_PASSWORD=<smtp-password-or-app-password>
+- APP_MAIL_FROM=<from-email>
 - APP_MAIL_MODE=smtp
 
 Optional
 - APP_UPLOAD_DIR=uploads
-- APP_JWT_SECRET=change-this-to-secure-random-string
+- APP_JWT_SECRET=<strong-random-secret>
+
+Security note
+- Never commit real passwords, app passwords, JWT secrets, or publish profiles.
