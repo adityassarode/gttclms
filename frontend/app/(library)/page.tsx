@@ -405,6 +405,9 @@ function DashboardPageContent() {
           Feed your curiosity. Build your mind. One page today. A stronger you
           tomorrow.
         </p>
+        <p className="mt-2 text-sm text-muted-foreground">
+           This platform is fully designed and developed by Aditya Sarode.
+        </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
