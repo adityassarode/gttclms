@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Heart,
+  BookOpen,
   BookMarked,
   Clock,
   Share2,
