@@ -1,5 +1,9 @@
 "use client";
 
+
+import { useState, useEffect } from "react";
+
+const FULL_NAME = "Aditya Sarode";
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -204,6 +208,25 @@ function DashboardPageContent() {
   const [removingDonationId, setRemovingDonationId] = React.useState<
     string | null
   >(null);
+  const [typed, setTyped] = useState("");  
+const [done, setDone] = useState(false);  
+const [showLine, setShowLine] = useState(false);  
+  
+useEffect(() => {  
+  let i = 0;  
+  const t = setInterval(() => {  
+    i++;  
+    setTyped(FULL_NAME.slice(0, i));  
+    if (i === FULL_NAME.length) {  
+      clearInterval(t);  
+      setTimeout(() => {  
+        setDone(true);  
+        setTimeout(() => setShowLine(true), 200);  
+      }, 180);  
+    }  
+  }, 72);  
+  return () => clearInterval(t);  
+}, []);
 
   React.useEffect(() => {
     setSearch(queryInUrl);
