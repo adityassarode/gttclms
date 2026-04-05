@@ -75,7 +75,7 @@ public class SupabaseUserService {
             user.setPhone(phone);
         }
 
-        if (isBlank(user.getAvatarUrl()) && !isBlank(avatarUrl)) {
+        if (!isBlank(avatarUrl)) {
             user.setAvatarUrl(avatarUrl);
         }
 

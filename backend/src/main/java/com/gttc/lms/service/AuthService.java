@@ -152,17 +152,7 @@ public class AuthService {
     }
 
     private UserResponse toUserResponse(User user) {
-        return DtoMapper.toUser(user, resolveAvatarUrl(user));
-    }
-
-    private String resolveAvatarUrl(User user) {
-        if (user == null || user.getId() == null) {
-            return user == null ? null : user.getAvatarUrl();
-        }
-
-        return userRepository.findResolvedAvatarUrlByUserId(user.getId())
-                .filter(value -> !value.isBlank())
-                .orElse(user.getAvatarUrl());
+        return DtoMapper.toUser(user);
     }
 
     private GoogleTokenInfo verifyGoogleToken(String idToken) {

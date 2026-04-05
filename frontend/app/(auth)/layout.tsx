@@ -38,9 +38,7 @@ export default function AuthLayout({
 
       {/* Footer */}
       <footer className="p-4 text-center text-xs text-muted-foreground sm:p-6 sm:text-sm">
-        <p>
-          &copy; {new Date().getFullYear()} GTTC Library. All rights reserved.
-        </p>
+        <p>Designed By Aditya Sarode</p>
       </footer>
     </div>
   );

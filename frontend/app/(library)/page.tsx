@@ -52,7 +52,7 @@ function FeaturedBook({ book }: { book: Book }) {
   return (
     <Link
       href={`/book/${book.id}`}
-      className="group min-w-[180px] rounded-2xl border border-border/50 bg-card p-4 transition-all hover:-translate-y-1 hover:shadow-lg sm:min-w-[200px]"
+      className="group w-full min-w-full rounded-2xl border border-border/50 bg-card p-4 transition-all hover:-translate-y-1 hover:shadow-lg sm:w-auto sm:min-w-[200px]"
     >
       <div className="relative mx-auto h-44 w-28 overflow-hidden rounded-lg bg-muted sm:h-48 sm:w-32">
         {!loaded && <Skeleton className="absolute inset-0" />}
@@ -357,12 +357,12 @@ function DashboardPageContent() {
             </div>
           </div>
         </div>
-        <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-4">
+        <div className="flex gap-4 overflow-x-auto pb-4">
           {loading
             ? Array.from({ length: 4 }).map((_, index) => (
                 <div
                   key={index}
-                  className="min-w-[200px] rounded-2xl border border-border/50 bg-card p-4"
+                  className="min-w-full rounded-2xl border border-border/50 bg-card p-4 sm:min-w-[200px]"
                 >
                   <Skeleton className="mx-auto h-48 w-32 rounded-lg" />
                   <Skeleton className="mx-auto mt-4 h-4 w-3/4" />

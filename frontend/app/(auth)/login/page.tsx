@@ -295,7 +295,7 @@ function LoginPageContent() {
                 onChange={(event) =>
                   setForm({ ...form, email: event.target.value })
                 }
-                placeholder="you@gttc.edu"
+                placeholder="Aditya Sarode"
                 className="h-11 rounded-xl pl-10"
                 required
               />

@@ -162,7 +162,7 @@ export default function HelpPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <a
-                href="mailto:library@gttc.edu"
+                href="mailto:gttclmss@gmail.com"
                 className="flex items-center gap-3 rounded-xl p-3 bg-secondary/50 hover:bg-secondary transition-colors group"
               >
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-background">
@@ -173,14 +173,14 @@ export default function HelpPage() {
                     Email Support
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    library@gttc.edu
+                    gttclmss@gmail.com
                   </p>
                 </div>
                 <ExternalLink className="h-4 w-4 text-muted-foreground" />
               </a>
 
               <a
-                href="tel:+911234567890"
+                href="tel:+919141630309"
                 className="flex items-center gap-3 rounded-xl p-3 bg-secondary/50 hover:bg-secondary transition-colors group"
               >
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-background">
@@ -191,7 +191,7 @@ export default function HelpPage() {
                     Call Us
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    +91 123 456 7890
+                    +91 914 163 0309
                   </p>
                 </div>
                 <ExternalLink className="h-4 w-4 text-muted-foreground" />
@@ -204,9 +204,9 @@ export default function HelpPage() {
                 <div>
                   <p className="font-medium text-foreground">Visit Us</p>
                   <p className="text-sm text-muted-foreground">
-                    GTTC Library, Main Building
+                    Government Tool Room & Training Centre (GTTC)
                     <br />
-                    Ground Floor, Block A
+                    Industrial Estate, Udyambag, Belgaum 590008.
                   </p>
                 </div>
               </div>
@@ -223,7 +223,7 @@ export default function HelpPage() {
                 Help us improve! Share your ideas for new books or features.
               </p>
               <Button variant="outline" className="w-full rounded-xl" asChild>
-                <a href="mailto:library@gttc.edu?subject=GTTC%20Library%20Feedback">
+                <a href="mailto:gttclmss@gmail.com?subject=GTTC%20Library%20Feedback">
                   Submit Feedback
                 </a>
               </Button>
