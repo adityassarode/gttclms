@@ -10,6 +10,7 @@ import {
   Clock,
   BookMarked,
   Gift,
+  FileText,
   HelpCircle,
   Settings,
   LogOut,
@@ -43,6 +44,12 @@ import { Badge } from "@/components/ui/badge";
 
 const navigation = [
   { name: "Discover", href: "/", icon: Home, requiresAuth: false },
+  {
+    name: "Digital Books",
+    href: "/digital",
+    icon: FileText,
+    requiresAuth: true,
+  },
   { name: "Favorites", href: "/favorites", icon: Heart, requiresAuth: true },
   { name: "Borrowed", href: "/borrowed", icon: BookMarked, requiresAuth: true },
   { name: "Reserved", href: "/reserved", icon: Clock, requiresAuth: true },
@@ -286,7 +293,7 @@ export default function LibraryLayout({
   );
 
   return (
-    <div className="flex min-h-dvh bg-background">
+    <div className="flex min-h-dvh w-full overflow-x-hidden bg-background">
       {/* Desktop Sidebar */}
       <aside className="hidden w-64 flex-shrink-0 border-r border-border bg-card lg:block">
         <SidebarContent
@@ -310,7 +317,7 @@ export default function LibraryLayout({
       </Sheet>
 
       {/* Main Content */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         {/* Top Bar */}
         <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-xl">
           <div className="flex h-16 items-center justify-between gap-3 px-3 sm:gap-4 sm:px-4 lg:px-8">
@@ -444,7 +451,7 @@ export default function LibraryLayout({
 
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
-          <div className="mx-auto max-w-7xl px-3 py-5 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
+          <div className="mx-auto w-full min-w-0 max-w-7xl px-3 py-5 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
             {children}
           </div>
         </main>

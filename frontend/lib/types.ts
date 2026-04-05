@@ -35,6 +35,9 @@ export interface Book {
   copiesTotal: number;
   copiesAvailable: number;
   featured: boolean;
+  digital?: boolean;
+  pdfUrl?: string | null;
+  uploadedByUserId?: string | null;
 }
 
 export interface DonationRecord {
@@ -117,6 +120,14 @@ export interface BookUpsertPayload {
   coverUrl?: string;
   copiesTotal: number;
   featured?: boolean;
+}
+
+export interface DigitalBookCreatePayload {
+  title: string;
+  author: string;
+  description?: string;
+  pdfUrl?: string;
+  pdfFile?: File;
 }
 
 export interface BorrowRequestPayload {

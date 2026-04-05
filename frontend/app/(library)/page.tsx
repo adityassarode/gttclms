@@ -9,6 +9,8 @@ import {
   Heart,
   ArrowRight,
   BookOpen,
+  FileText,
+  ExternalLink,
   Sparkles,
   TrendingUp,
   Clock,
@@ -16,7 +18,7 @@ import {
   History,
 } from "lucide-react";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { api, getUploadUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useRequireLoginAction } from "@/lib/route-guards";
 import type { ApiId, Book } from "@/lib/types";
@@ -46,13 +48,26 @@ interface RecentBook {
   viewedAt: string;
 }
 
+function isDigitalBook(book: Book) {
+  return (
+    Boolean(book.digital) || book.category.toLowerCase() === "digital books"
+  );
+}
+
+function getPdfHref(book: Book) {
+  if (!book.pdfUrl) {
+    return null;
+  }
+  return getUploadUrl(book.pdfUrl) || book.pdfUrl;
+}
+
 function FeaturedBook({ book }: { book: Book }) {
   const [loaded, setLoaded] = React.useState(false);
 
   return (
     <Link
       href={`/book/${book.id}`}
-      className="group w-full min-w-full rounded-2xl border border-border/50 bg-card p-4 transition-all hover:-translate-y-1 hover:shadow-lg sm:w-auto sm:min-w-[200px]"
+      className="group w-full rounded-2xl border border-border/50 bg-card p-4 transition-all hover:-translate-y-1 hover:shadow-lg sm:w-auto sm:min-w-[200px]"
     >
       <div className="relative mx-auto h-44 w-28 overflow-hidden rounded-lg bg-muted sm:h-48 sm:w-32">
         {!loaded && <Skeleton className="absolute inset-0" />}
@@ -88,12 +103,12 @@ function BookCard({
   const [loaded, setLoaded] = React.useState(false);
 
   return (
-    <Card className="overflow-hidden border-border/50 bg-card transition-all hover:shadow-lg hover:shadow-primary/5">
+    <Card className="min-w-0 overflow-hidden border-border/50 bg-card transition-all hover:shadow-lg hover:shadow-primary/5">
       <CardContent className="p-4">
-        <div className="flex items-start gap-3 p-2 sm:gap-4 sm:p-4">
+        <div className="flex min-w-0 items-start gap-3 sm:gap-4">
           <Link
             href={`/book/${book.id}`}
-            className="relative h-32 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-muted sm:h-40 sm:w-28"
+            className="relative h-28 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-muted sm:h-40 sm:w-28"
           >
             {!loaded && <Skeleton className="absolute inset-0" />}
             <Image
@@ -114,18 +129,20 @@ function BookCard({
                 {book.category}
               </Badge>
               <Link href={`/book/${book.id}`}>
-                <h3 className="line-clamp-2 font-semibold text-foreground hover:text-primary">
+                <h3 className="line-clamp-2 break-words font-semibold text-foreground hover:text-primary">
                   {book.title}
                 </h3>
               </Link>
               <p className="text-sm text-muted-foreground">{book.author}</p>
-              <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
+              <p className="mt-2 line-clamp-2 break-words text-xs text-muted-foreground">
                 {book.description || "No description available."}
               </p>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2 pt-3">
               <span className="text-xs text-muted-foreground">
-                {book.copiesAvailable}/{book.copiesTotal} copies
+                {isDigitalBook(book)
+                  ? "Digital access"
+                  : `${book.copiesAvailable}/${book.copiesTotal} copies`}
               </span>
               <div className="flex items-center gap-1">
                 <Button
@@ -244,15 +261,22 @@ function DashboardPageContent() {
     };
   }, [isAuthenticated]);
 
+  const digitalBooks = React.useMemo(() => {
+    return books.filter(isDigitalBook);
+  }, [books]);
+
   const categories = React.useMemo(() => {
     const map = new Map<string, number>();
     books.forEach((book) => {
       map.set(book.category, (map.get(book.category) || 0) + 1);
     });
+    if (!map.has("Digital Books")) {
+      map.set("Digital Books", digitalBooks.length);
+    }
     return [...map.entries()]
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
-  }, [books]);
+  }, [books, digitalBooks.length]);
 
   const featured = React.useMemo(() => {
     const featuredBooks = books.filter((book) => book.featured);
@@ -300,7 +324,7 @@ function DashboardPageContent() {
   };
 
   return (
-    <div className="space-y-8 sm:space-y-10">
+    <div className="w-full min-w-0 space-y-8 sm:space-y-10">
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/5 via-card to-accent/5 p-6 sm:p-8 lg:p-12">
         <div className="flex items-center gap-2 text-primary">
           <Sparkles className="h-5 w-5" />
@@ -312,7 +336,8 @@ function DashboardPageContent() {
           <span className="text-primary">curiosity and goals</span>
         </h1>
         <p className="mt-4 max-w-lg text-muted-foreground">
-          Public access includes dashboard, list, details, and search.
+          Feed your curiosity. Build your mind. One page today. A stronger you
+          tomorrow.
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1 max-w-md">
@@ -357,12 +382,12 @@ function DashboardPageContent() {
             </div>
           </div>
         </div>
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="grid gap-4 sm:flex sm:gap-4 sm:overflow-x-auto sm:pb-4">
           {loading
             ? Array.from({ length: 4 }).map((_, index) => (
                 <div
                   key={index}
-                  className="min-w-full rounded-2xl border border-border/50 bg-card p-4 sm:min-w-[200px]"
+                  className="w-full rounded-2xl border border-border/50 bg-card p-4 sm:min-w-[200px]"
                 >
                   <Skeleton className="mx-auto h-48 w-32 rounded-lg" />
                   <Skeleton className="mx-auto mt-4 h-4 w-3/4" />
@@ -372,6 +397,71 @@ function DashboardPageContent() {
                 <FeaturedBook key={book.id} book={book} />
               ))}
         </div>
+      </section>
+
+      <section>
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+              <FileText className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">
+                Digital Books
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Community-uploaded PDFs for instant reading
+              </p>
+            </div>
+          </div>
+          <Button variant="outline" asChild>
+            <Link href="/digital">Manage Digital Books</Link>
+          </Button>
+        </div>
+
+        {digitalBooks.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {digitalBooks.map((book) => {
+              const pdfHref = getPdfHref(book);
+              return (
+                <Card
+                  key={book.id}
+                  className="border-border/50 bg-card transition-all hover:shadow-lg"
+                >
+                  <CardContent className="space-y-3 p-4">
+                    <Badge variant="secondary">Digital Books</Badge>
+                    <h3 className="line-clamp-1 font-semibold text-foreground">
+                      {book.title}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {book.author}
+                    </p>
+                    <p className="line-clamp-2 text-sm text-muted-foreground">
+                      {book.description || "No description available."}
+                    </p>
+
+                    {pdfHref ? (
+                      <Button className="rounded-lg" asChild>
+                        <a href={pdfHref} target="_blank" rel="noreferrer">
+                          <ExternalLink className="mr-2 h-4 w-4" />
+                          Open PDF
+                        </a>
+                      </Button>
+                    ) : (
+                      <Button variant="outline" className="rounded-lg" asChild>
+                        <Link href={`/book/${book.id}`}>View Details</Link>
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-border/50 bg-card p-6 text-sm text-muted-foreground">
+            No digital books uploaded yet. Be the first to add one.
+          </div>
+        )}
       </section>
 
       <section>

@@ -18,16 +18,22 @@ import org.springframework.transaction.annotation.Transactional;
 public class FavoriteService {
     private final FavoriteRepository favoriteRepository;
     private final BookService bookService;
+    private final UserIdentityBridgeService userIdentityBridgeService;
 
-    public FavoriteService(FavoriteRepository favoriteRepository, BookService bookService) {
+    public FavoriteService(
+            FavoriteRepository favoriteRepository,
+            BookService bookService,
+            UserIdentityBridgeService userIdentityBridgeService
+    ) {
         this.favoriteRepository = favoriteRepository;
         this.bookService = bookService;
+        this.userIdentityBridgeService = userIdentityBridgeService;
     }
 
     @Transactional(readOnly = true)
     public List<BookResponse> listFavorites(User user) {
         validateUser(user);
-        UUID userId = UserUuidResolver.resolve(user);
+        UUID userId = userIdentityBridgeService.resolveOperationalUserId(user);
         return favoriteRepository.findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
                 .map(Favorite::getBook)
@@ -37,7 +43,7 @@ public class FavoriteService {
 
     public void addFavorite(User user, UUID bookId) {
         validateUser(user);
-        UUID userId = UserUuidResolver.resolve(user);
+        UUID userId = userIdentityBridgeService.resolveOperationalUserId(user);
         Book book = bookService.findBook(bookId);
         favoriteRepository.findByUserIdAndBookId(userId, bookId)
                 .orElseGet(() -> favoriteRepository.save(createFavorite(userId, book)));
@@ -45,7 +51,7 @@ public class FavoriteService {
 
     public void removeFavorite(User user, UUID bookId) {
         validateUser(user);
-        UUID userId = UserUuidResolver.resolve(user);
+        UUID userId = userIdentityBridgeService.resolveOperationalUserId(user);
         favoriteRepository.findByUserIdAndBookId(userId, bookId)
                 .ifPresent(favoriteRepository::delete);
     }

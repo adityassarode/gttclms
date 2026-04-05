@@ -4,6 +4,7 @@ import type {
   AuthResponse,
   BanUserPayload,
   Book,
+  DigitalBookCreatePayload,
   BookUpsertPayload,
   BorrowRecord,
   BorrowRequestPayload,
@@ -461,6 +462,26 @@ function normalizeDonationPayload(payload: DonationSubmitPayload) {
   return formData;
 }
 
+function normalizeDigitalBookPayload(payload: DigitalBookCreatePayload) {
+  const formData = new FormData();
+  formData.append("title", payload.title.trim());
+  formData.append("author", payload.author.trim());
+
+  if (payload.description?.trim()) {
+    formData.append("description", payload.description.trim());
+  }
+
+  if (payload.pdfUrl?.trim()) {
+    formData.append("pdfUrl", payload.pdfUrl.trim());
+  }
+
+  if (payload.pdfFile) {
+    formData.append("pdfFile", payload.pdfFile);
+  }
+
+  return formData;
+}
+
 export const api = {
   register(payload: RegisterPayload) {
     return request<AuthResponse>(
@@ -603,6 +624,45 @@ export const api = {
         method: "DELETE",
       },
       "Unable to delete book",
+    );
+  },
+
+  getDigitalBooks() {
+    return request<Book[]>(
+      "/api/books/digital",
+      {},
+      "Unable to load digital books",
+      undefined,
+      false,
+    );
+  },
+
+  getMyDigitalBooks() {
+    return request<Book[]>(
+      "/api/books/digital/me",
+      {},
+      "Unable to load your digital books",
+    );
+  },
+
+  createDigitalBook(payload: DigitalBookCreatePayload) {
+    return request<Book>(
+      "/api/books/digital",
+      {
+        method: "POST",
+        body: normalizeDigitalBookPayload(payload),
+      },
+      "Unable to add digital book",
+    );
+  },
+
+  async deleteDigitalBook(id: string | number) {
+    await request<void>(
+      `/api/books/digital/${id}`,
+      {
+        method: "DELETE",
+      },
+      "Unable to remove digital book",
     );
   },
 

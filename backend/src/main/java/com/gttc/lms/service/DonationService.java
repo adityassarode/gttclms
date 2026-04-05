@@ -4,10 +4,8 @@ import com.gttc.lms.dto.DonationResponse;
 import com.gttc.lms.exception.ApiException;
 import com.gttc.lms.model.Donation;
 import com.gttc.lms.model.User;
-import com.gttc.lms.model.enums.AuthProvider;
 import com.gttc.lms.model.enums.UserStatus;
 import com.gttc.lms.repository.DonationRepository;
-import com.gttc.lms.repository.UserRepository;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,16 +28,16 @@ public class DonationService {
 
     private final DonationRepository donationRepository;
     private final EmailService emailService;
-    private final UserRepository userRepository;
+    private final UserIdentityBridgeService userIdentityBridgeService;
     private final Path uploadDir;
 
     public DonationService(DonationRepository donationRepository,
                            EmailService emailService,
-                           UserRepository userRepository,
+                           UserIdentityBridgeService userIdentityBridgeService,
                            @Value("${app.storage.uploadDir}") String uploadDir) {
         this.donationRepository = donationRepository;
         this.emailService = emailService;
-        this.userRepository = userRepository;
+        this.userIdentityBridgeService = userIdentityBridgeService;
         this.uploadDir = Paths.get(uploadDir).toAbsolutePath().normalize();
     }
 
@@ -64,7 +62,7 @@ public class DonationService {
         if (image2 != null && image2.getSize() > MAX_IMAGE_BYTES) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Image 2 exceeds 2MB");
         }
-        UUID userId = UserUuidResolver.resolve(user);
+        UUID userId = userIdentityBridgeService.resolveOperationalUserId(user);
         Donation donation = new Donation();
         donation.setUserId(userId);
         donation.setTitle(sanitizedTitle);
@@ -91,7 +89,7 @@ public class DonationService {
     @Transactional(readOnly = true)
     public List<DonationResponse> listMine(User user) {
         validateUser(user);
-        UUID userId = UserUuidResolver.resolve(user);
+        UUID userId = userIdentityBridgeService.resolveOperationalUserId(user);
         return donationRepository.findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
                 .map(donation -> {
@@ -109,9 +107,7 @@ public class DonationService {
     }
 
     private String resolveDonorName(UUID userId) {
-        return userRepository.findByProviderAndProviderId(AuthProvider.SUPABASE, userId.toString())
-                .map(User::getName)
-                .orElse(null);
+        return userIdentityBridgeService.resolveDisplayName(userId);
     }
 
     private String storeImage(MultipartFile file) {

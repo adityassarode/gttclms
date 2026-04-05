@@ -22,11 +22,14 @@ class FavoriteServiceValidationTest {
     @Mock
     private BookService bookService;
 
+    @Mock
+    private UserIdentityBridgeService userIdentityBridgeService;
+
     private FavoriteService favoriteService;
 
     @BeforeEach
     void setUp() {
-        favoriteService = new FavoriteService(favoriteRepository, bookService);
+        favoriteService = new FavoriteService(favoriteRepository, bookService, userIdentityBridgeService);
     }
 
     @Test
@@ -36,7 +39,7 @@ class FavoriteServiceValidationTest {
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatus());
         assertEquals("Authentication required", exception.getMessage());
-        verifyNoInteractions(favoriteRepository, bookService);
+        verifyNoInteractions(favoriteRepository, bookService, userIdentityBridgeService);
     }
 
     @Test
@@ -45,6 +48,6 @@ class FavoriteServiceValidationTest {
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatus());
         assertEquals("Authentication required", exception.getMessage());
-        verifyNoInteractions(favoriteRepository, bookService);
+        verifyNoInteractions(favoriteRepository, bookService, userIdentityBridgeService);
     }
 }

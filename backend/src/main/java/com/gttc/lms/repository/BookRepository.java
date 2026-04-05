@@ -10,6 +10,12 @@ import org.springframework.data.repository.query.Param;
 public interface BookRepository extends JpaRepository<Book, UUID> {
     List<Book> findByFeaturedTrue();
 
+    List<Book> findByDigitalTrueOrderByCreatedAtDesc();
+
+    List<Book> findByDigitalTrueAndUploadedByUserIdOrderByCreatedAtDesc(UUID uploadedByUserId);
+
+    long countByDigitalTrueAndUploadedByUserId(UUID uploadedByUserId);
+
         @Query("""
                         select b
                         from Book b

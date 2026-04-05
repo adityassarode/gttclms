@@ -13,6 +13,9 @@ public class BookResponse {
     private int copiesTotal;
     private int copiesAvailable;
     private boolean featured;
+    private boolean digital;
+    private String pdfUrl;
+    private UUID uploadedByUserId;
 
     public UUID getId() {
         return id;
@@ -92,5 +95,29 @@ public class BookResponse {
 
     public void setFeatured(boolean featured) {
         this.featured = featured;
+    }
+
+    public boolean isDigital() {
+        return digital;
+    }
+
+    public void setDigital(boolean digital) {
+        this.digital = digital;
+    }
+
+    public String getPdfUrl() {
+        return pdfUrl;
+    }
+
+    public void setPdfUrl(String pdfUrl) {
+        this.pdfUrl = pdfUrl;
+    }
+
+    public UUID getUploadedByUserId() {
+        return uploadedByUserId;
+    }
+
+    public void setUploadedByUserId(UUID uploadedByUserId) {
+        this.uploadedByUserId = uploadedByUserId;
     }
 }

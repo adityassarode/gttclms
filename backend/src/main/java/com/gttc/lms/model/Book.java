@@ -44,6 +44,15 @@ public class Book {
     @Column(name = "featured")
     private boolean featured;
 
+    @Column(name = "is_digital")
+    private boolean digital;
+
+    @Column(name = "pdf_url")
+    private String pdfUrl;
+
+    @Column(name = "uploaded_by_user_id")
+    private UUID uploadedByUserId;
+
     @Column(name = "created_at")
     private Instant createdAt = Instant.now();
 
@@ -121,6 +130,30 @@ public class Book {
 
     public void setFeatured(boolean featured) {
         this.featured = featured;
+    }
+
+    public boolean isDigital() {
+        return digital;
+    }
+
+    public void setDigital(boolean digital) {
+        this.digital = digital;
+    }
+
+    public String getPdfUrl() {
+        return pdfUrl;
+    }
+
+    public void setPdfUrl(String pdfUrl) {
+        this.pdfUrl = pdfUrl;
+    }
+
+    public UUID getUploadedByUserId() {
+        return uploadedByUserId;
+    }
+
+    public void setUploadedByUserId(UUID uploadedByUserId) {
+        this.uploadedByUserId = uploadedByUserId;
     }
 
     public Instant getCreatedAt() {

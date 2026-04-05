@@ -18,7 +18,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { api, getUploadUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useRequireLoginAction } from "@/lib/route-guards";
 import type { Book } from "@/lib/types";
@@ -31,6 +31,19 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const RECENT_BOOKS_KEY = "gttc_recent_books";
+
+function isDigitalBook(book: Book) {
+  return (
+    Boolean(book.digital) || book.category.toLowerCase() === "digital books"
+  );
+}
+
+function getPdfHref(book: Book) {
+  if (!book.pdfUrl) {
+    return null;
+  }
+  return getUploadUrl(book.pdfUrl) || book.pdfUrl;
+}
 
 function saveRecentBook(book: Book) {
   if (typeof window === "undefined") {
@@ -148,6 +161,11 @@ export default function BookDetailPage() {
       return;
     }
 
+    if (isDigitalBook(book)) {
+      toast.error("Digital books are available online and cannot be borrowed");
+      return;
+    }
+
     if (book.copiesAvailable <= 0) {
       toast.error("No copies are currently available");
       return;
@@ -170,6 +188,11 @@ export default function BookDetailPage() {
 
   const handleReserve = async () => {
     if (!book || !requireLogin(`/book/${bookId}`)) {
+      return;
+    }
+
+    if (isDigitalBook(book)) {
+      toast.error("Digital books are available online and cannot be reserved");
       return;
     }
 
@@ -260,12 +283,16 @@ export default function BookDetailPage() {
     );
   }
 
-  const isAvailable = book.copiesAvailable > 0;
+  const isDigital = isDigitalBook(book);
+  const pdfHref = getPdfHref(book);
+  const isAvailable = isDigital ? true : book.copiesAvailable > 0;
   const allowGuestActionRedirect = !isAuthenticated;
-  const bookRating = Math.max(
-    3.8,
-    Math.min(5, 4 + book.copiesAvailable / Math.max(book.copiesTotal, 1)),
-  ).toFixed(1);
+  const bookRating = isDigital
+    ? "4.9"
+    : Math.max(
+        3.8,
+        Math.min(5, 4 + book.copiesAvailable / Math.max(book.copiesTotal, 1)),
+      ).toFixed(1);
 
   return (
     <div className="space-y-8">
@@ -297,27 +324,56 @@ export default function BookDetailPage() {
           </div>
 
           <div className="space-y-3">
-            <Button
-              className="w-full h-12 text-base font-medium rounded-xl"
-              disabled={
-                isSubmitting || (!allowGuestActionRedirect && !isAvailable)
-              }
-              onClick={handleBorrow}
-            >
-              <BookMarked className="mr-2 h-5 w-5" />
-              {isSubmitting ? "Processing..." : "Borrow Now"}
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full h-12 text-base font-medium rounded-xl"
-              disabled={
-                isSubmitting || (!allowGuestActionRedirect && !isAvailable)
-              }
-              onClick={handleReserve}
-            >
-              <Clock className="mr-2 h-5 w-5" />
-              Reserve for Later
-            </Button>
+            {isDigital ? (
+              <>
+                {pdfHref ? (
+                  <Button
+                    className="w-full h-12 text-base font-medium rounded-xl"
+                    asChild
+                  >
+                    <a href={pdfHref} target="_blank" rel="noreferrer">
+                      <BookOpen className="mr-2 h-5 w-5" />
+                      Open PDF
+                    </a>
+                  </Button>
+                ) : (
+                  <Button
+                    className="w-full h-12 text-base font-medium rounded-xl"
+                    disabled
+                  >
+                    <BookOpen className="mr-2 h-5 w-5" />
+                    PDF Unavailable
+                  </Button>
+                )}
+                <p className="px-1 text-xs text-muted-foreground">
+                  This is a digital book. Read instantly online.
+                </p>
+              </>
+            ) : (
+              <>
+                <Button
+                  className="w-full h-12 text-base font-medium rounded-xl"
+                  disabled={
+                    isSubmitting || (!allowGuestActionRedirect && !isAvailable)
+                  }
+                  onClick={handleBorrow}
+                >
+                  <BookMarked className="mr-2 h-5 w-5" />
+                  {isSubmitting ? "Processing..." : "Borrow Now"}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full h-12 text-base font-medium rounded-xl"
+                  disabled={
+                    isSubmitting || (!allowGuestActionRedirect && !isAvailable)
+                  }
+                  onClick={handleReserve}
+                >
+                  <Clock className="mr-2 h-5 w-5" />
+                  Reserve for Later
+                </Button>
+              </>
+            )}
             <div className="flex gap-3">
               <Button
                 variant="secondary"
@@ -352,10 +408,21 @@ export default function BookDetailPage() {
                 {book.category}
               </Badge>
               <Badge
-                variant={isAvailable ? "default" : "destructive"}
+                variant={
+                  isDigital
+                    ? "secondary"
+                    : isAvailable
+                      ? "default"
+                      : "destructive"
+                }
                 className="rounded-full"
               >
-                {isAvailable ? (
+                {isDigital ? (
+                  <>
+                    <CheckCircle2 className="mr-1 h-3 w-3" />
+                    Digital Access
+                  </>
+                ) : isAvailable ? (
                   <>
                     <CheckCircle2 className="mr-1 h-3 w-3" />
                     Available
@@ -410,12 +477,16 @@ export default function BookDetailPage() {
                   <Users className="h-5 w-5 text-primary" />
                   <div>
                     <p className="font-semibold text-foreground">
-                      {book.copiesAvailable} of {book.copiesTotal} copies
+                      {isDigital
+                        ? "Unlimited digital access"
+                        : `${book.copiesAvailable} of ${book.copiesTotal} copies`}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {isAvailable
-                        ? "Ready to borrow"
-                        : "Reserve when available"}
+                      {isDigital
+                        ? "Open the PDF to start reading"
+                        : isAvailable
+                          ? "Ready to borrow"
+                          : "Reserve when available"}
                     </p>
                   </div>
                 </div>
@@ -433,10 +504,10 @@ export default function BookDetailPage() {
                   <Calendar className="h-5 w-5 text-primary" />
                   <div>
                     <p className="font-semibold text-foreground">
-                      GTTC Library
+                      {isDigital ? "Digital Books" : "GTTC Library"}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      General circulation
+                      {isDigital ? "Community uploads" : "General circulation"}
                     </p>
                   </div>
                 </div>

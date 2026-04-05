@@ -27,11 +27,18 @@ public class BorrowService {
     private final BorrowRepository borrowRepository;
     private final BookService bookService;
     private final EmailService emailService;
+    private final UserIdentityBridgeService userIdentityBridgeService;
 
-    public BorrowService(BorrowRepository borrowRepository, BookService bookService, EmailService emailService) {
+    public BorrowService(
+            BorrowRepository borrowRepository,
+            BookService bookService,
+            EmailService emailService,
+            UserIdentityBridgeService userIdentityBridgeService
+    ) {
         this.borrowRepository = borrowRepository;
         this.bookService = bookService;
         this.emailService = emailService;
+        this.userIdentityBridgeService = userIdentityBridgeService;
     }
 
     @Transactional
@@ -40,12 +47,15 @@ public class BorrowService {
         if (!user.isVerified()) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Verify your register number before borrowing");
         }
-        UUID userId = UserUuidResolver.resolve(user);
+        UUID userId = userIdentityBridgeService.resolveOperationalUserId(user);
         long activeCount = borrowRepository.countByUserIdAndStatus(userId, BorrowStatus.BORROWED);
         if (activeCount >= MAX_BORROWS) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Borrow limit reached (max 2 books)");
         }
         Book book = bookService.findBook(bookId);
+        if (book.isDigital()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Digital books are available online and cannot be borrowed");
+        }
         if (book.getCopiesAvailable() < 1) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Book not available");
         }
@@ -65,7 +75,7 @@ public class BorrowService {
     @Transactional
     public BorrowResponse returnBook(User user, UUID borrowId) {
         validateUser(user);
-        UUID userId = UserUuidResolver.resolve(user);
+        UUID userId = userIdentityBridgeService.resolveOperationalUserId(user);
         Borrow borrow = borrowRepository.findById(borrowId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Borrow record not found"));
         if (!borrow.getUserId().equals(userId)) {
@@ -96,7 +106,7 @@ public class BorrowService {
     @Transactional(readOnly = true)
     public List<BorrowResponse> listBorrows(User user) {
         validateUser(user);
-        UUID userId = UserUuidResolver.resolve(user);
+        UUID userId = userIdentityBridgeService.resolveOperationalUserId(user);
         return borrowRepository.findByUserIdOrderByBorrowedAtDesc(userId)
                 .stream()
                 .map(DtoMapper::toBorrow)

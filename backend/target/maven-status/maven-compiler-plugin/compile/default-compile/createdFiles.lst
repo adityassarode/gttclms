@@ -1,5 +1,6 @@
 com/gttc/lms/service/AuthService$GoogleTokenInfo.class
 com/gttc/lms/dto/DonationResponse.class
+com/gttc/lms/service/UserIdentityBridgeService.class
 com/gttc/lms/service/JwtService.class
 com/gttc/lms/GttcLmsApplication.class
 com/gttc/lms/dto/StudentRequest.class
@@ -14,6 +15,7 @@ com/gttc/lms/config/SupabaseUserFilter$1.class
 com/gttc/lms/dto/ReservationResponse.class
 com/gttc/lms/dto/AnalyticsResponse$MetricPoint.class
 com/gttc/lms/dto/AuthResponse.class
+com/gttc/lms/model/UserProfileRecord.class
 com/gttc/lms/dto/BorrowRequest.class
 com/gttc/lms/controller/ReservationController.class
 com/gttc/lms/service/CurrentUserResolver.class
@@ -25,6 +27,7 @@ com/gttc/lms/model/Favorite.class
 com/gttc/lms/model/enums/UserStatus.class
 com/gttc/lms/controller/AdminController.class
 com/gttc/lms/exception/ErrorResponse.class
+com/gttc/lms/controller/DigitalBookController.class
 com/gttc/lms/service/DtoMapper.class
 com/gttc/lms/dto/StudentResponse.class
 com/gttc/lms/service/SeedDataRunner.class
@@ -34,6 +37,7 @@ com/gttc/lms/config/SupabaseIssuerAuthenticationManagerResolver.class
 com/gttc/lms/controller/BookController.class
 com/gttc/lms/config/SupabaseUserFilter.class
 com/gttc/lms/model/Reservation.class
+com/gttc/lms/repository/UserProfileRecordRepository.class
 com/gttc/lms/exception/GlobalExceptionHandler.class
 com/gttc/lms/model/User.class
 com/gttc/lms/dto/GoogleLoginRequest.class
@@ -76,6 +80,7 @@ com/gttc/lms/service/SupabaseUserService.class
 com/gttc/lms/dto/ReserveRequest.class
 com/gttc/lms/config/SecurityConfig.class
 com/gttc/lms/service/StudentService$1.class
+com/gttc/lms/service/DigitalBookService.class
 com/gttc/lms/dto/LoginRequest.class
 com/gttc/lms/dto/AdminLoginRequest.class
 com/gttc/lms/dto/BanUserRequest.class

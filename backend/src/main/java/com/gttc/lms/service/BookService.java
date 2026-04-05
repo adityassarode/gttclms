@@ -62,6 +62,9 @@ public class BookService {
         book.setCopiesTotal(request.getCopiesTotal());
         book.setCopiesAvailable(request.getCopiesTotal());
         book.setFeatured(request.isFeatured());
+        book.setDigital(false);
+        book.setPdfUrl(null);
+        book.setUploadedByUserId(null);
         bookRepository.save(book);
         return DtoMapper.toBook(book);
     }

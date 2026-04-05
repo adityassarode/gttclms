@@ -25,11 +25,19 @@ class BorrowServiceValidationTest {
     @Mock
     private EmailService emailService;
 
+    @Mock
+    private UserIdentityBridgeService userIdentityBridgeService;
+
     private BorrowService borrowService;
 
     @BeforeEach
     void setUp() {
-        borrowService = new BorrowService(borrowRepository, bookService, emailService);
+        borrowService = new BorrowService(
+                borrowRepository,
+                bookService,
+                emailService,
+                userIdentityBridgeService
+        );
     }
 
     @Test
@@ -39,7 +47,7 @@ class BorrowServiceValidationTest {
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatus());
         assertEquals("Authentication required", exception.getMessage());
-        verifyNoInteractions(borrowRepository, bookService, emailService);
+        verifyNoInteractions(borrowRepository, bookService, emailService, userIdentityBridgeService);
     }
 
     @Test
@@ -48,6 +56,6 @@ class BorrowServiceValidationTest {
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatus());
         assertEquals("Authentication required", exception.getMessage());
-        verifyNoInteractions(borrowRepository, bookService, emailService);
+        verifyNoInteractions(borrowRepository, bookService, emailService, userIdentityBridgeService);
     }
 }

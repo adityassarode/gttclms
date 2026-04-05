@@ -5,11 +5,9 @@ import com.gttc.lms.exception.ApiException;
 import com.gttc.lms.model.Book;
 import com.gttc.lms.model.Reservation;
 import com.gttc.lms.model.User;
-import com.gttc.lms.model.enums.AuthProvider;
 import com.gttc.lms.model.enums.ReservationStatus;
 import com.gttc.lms.model.enums.UserStatus;
 import com.gttc.lms.repository.ReservationRepository;
-import com.gttc.lms.repository.UserRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -27,16 +25,16 @@ public class ReservationService {
     private final ReservationRepository reservationRepository;
     private final BookService bookService;
     private final EmailService emailService;
-    private final UserRepository userRepository;
+    private final UserIdentityBridgeService userIdentityBridgeService;
 
     public ReservationService(ReservationRepository reservationRepository,
                               BookService bookService,
                               EmailService emailService,
-                              UserRepository userRepository) {
+                              UserIdentityBridgeService userIdentityBridgeService) {
         this.reservationRepository = reservationRepository;
         this.bookService = bookService;
         this.emailService = emailService;
-        this.userRepository = userRepository;
+        this.userIdentityBridgeService = userIdentityBridgeService;
     }
 
     @Transactional
@@ -45,12 +43,15 @@ public class ReservationService {
         if (!user.isVerified()) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Verify your register number before reserving");
         }
-        UUID userId = UserUuidResolver.resolve(user);
+        UUID userId = userIdentityBridgeService.resolveOperationalUserId(user);
         long activeCount = reservationRepository.countByUserIdAndStatus(userId, ReservationStatus.ACTIVE);
         if (activeCount >= MAX_RESERVES) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Reserve limit reached (max 1 book)");
         }
         Book book = bookService.findBook(bookId);
+        if (book.isDigital()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Digital books are available online and cannot be reserved");
+        }
         if (book.getCopiesAvailable() < 1) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Book not available for reservation");
         }
@@ -70,7 +71,7 @@ public class ReservationService {
     @Transactional(readOnly = true)
     public List<ReservationResponse> listReservations(User user) {
         validateUser(user);
-        UUID userId = UserUuidResolver.resolve(user);
+        UUID userId = userIdentityBridgeService.resolveOperationalUserId(user);
         return reservationRepository.findByUserIdOrderByReservedAtDesc(userId)
                 .stream()
                 .map(DtoMapper::toReservation)
@@ -80,7 +81,7 @@ public class ReservationService {
     @Transactional
     public ReservationResponse cancelReservation(User user, UUID reservationId) {
         validateUser(user);
-        UUID userId = UserUuidResolver.resolve(user);
+        UUID userId = userIdentityBridgeService.resolveOperationalUserId(user);
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Reservation not found"));
         if (!reservation.getUserId().equals(userId)) {
@@ -109,12 +110,14 @@ public class ReservationService {
     }
 
     private void sendReservationExpiredEmail(UUID userId) {
-        userRepository.findByProviderAndProviderId(AuthProvider.SUPABASE, userId.toString())
-                .ifPresent(user -> emailService.send(
-                        user.getEmail(),
-                        "Reservation Expired",
-                        "Your reservation expired. Please reserve again if needed."
-                ));
+        String email = userIdentityBridgeService.resolveEmail(userId);
+        if (email != null) {
+            emailService.send(
+                email,
+                "Reservation Expired",
+                "Your reservation expired. Please reserve again if needed."
+            );
+        }
     }
 
     private void validateUser(User user) {

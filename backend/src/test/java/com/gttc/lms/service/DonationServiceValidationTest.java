@@ -18,7 +18,6 @@ import com.gttc.lms.model.Donation;
 import com.gttc.lms.model.User;
 import com.gttc.lms.model.enums.UserStatus;
 import com.gttc.lms.repository.DonationRepository;
-import com.gttc.lms.repository.UserRepository;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,7 +41,7 @@ class DonationServiceValidationTest {
     private EmailService emailService;
 
     @Mock
-    private UserRepository userRepository;
+    private UserIdentityBridgeService userIdentityBridgeService;
 
     @TempDir
     private Path uploadDir;
@@ -51,7 +50,12 @@ class DonationServiceValidationTest {
 
     @BeforeEach
     void setUp() {
-        donationService = new DonationService(donationRepository, emailService, userRepository, uploadDir.toString());
+        donationService = new DonationService(
+                donationRepository,
+                emailService,
+                userIdentityBridgeService,
+                uploadDir.toString()
+        );
     }
 
     @Test
@@ -120,6 +124,7 @@ class DonationServiceValidationTest {
     @Test
     void donateSanitizesFilenameAndStoresInsideUploadDirectory() {
         when(donationRepository.save(any(Donation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userIdentityBridgeService.resolveOperationalUserId(any(User.class))).thenReturn(UUID.randomUUID());
         MockMultipartFile image1 = new MockMultipartFile(
                 "image1",
                 "../unsafe name?.png",

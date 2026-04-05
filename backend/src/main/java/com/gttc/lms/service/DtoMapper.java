@@ -48,6 +48,9 @@ public final class DtoMapper {
         response.setCopiesTotal(book.getCopiesTotal());
         response.setCopiesAvailable(book.getCopiesAvailable());
         response.setFeatured(book.isFeatured());
+        response.setDigital(book.isDigital());
+        response.setPdfUrl(book.getPdfUrl());
+        response.setUploadedByUserId(book.getUploadedByUserId());
         return response;
     }
 
