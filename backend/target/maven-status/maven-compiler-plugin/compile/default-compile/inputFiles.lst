@@ -42,6 +42,7 @@
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/dto/ReservationResponse.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/controller/BookController.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/repository/FavoriteRepository.java
+/workspaces/gttclms/backend/src/main/java/com/gttc/lms/service/UserUuidResolver.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/model/enums/UserStatus.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/config/JwtAuthFilter.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/controller/BorrowController.java

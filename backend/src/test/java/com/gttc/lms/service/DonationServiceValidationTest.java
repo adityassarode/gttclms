@@ -18,10 +18,12 @@ import com.gttc.lms.model.Donation;
 import com.gttc.lms.model.User;
 import com.gttc.lms.model.enums.UserStatus;
 import com.gttc.lms.repository.DonationRepository;
+import com.gttc.lms.repository.UserRepository;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,6 +41,9 @@ class DonationServiceValidationTest {
     @Mock
     private EmailService emailService;
 
+    @Mock
+    private UserRepository userRepository;
+
     @TempDir
     private Path uploadDir;
 
@@ -46,7 +51,7 @@ class DonationServiceValidationTest {
 
     @BeforeEach
     void setUp() {
-        donationService = new DonationService(donationRepository, emailService, uploadDir.toString());
+        donationService = new DonationService(donationRepository, emailService, userRepository, uploadDir.toString());
     }
 
     @Test
@@ -150,6 +155,7 @@ class DonationServiceValidationTest {
         user.setStatus(UserStatus.ACTIVE);
         user.setEmail("user@example.com");
         user.setName("User");
+        user.setProviderId(UUID.randomUUID().toString());
         return user;
     }
 }

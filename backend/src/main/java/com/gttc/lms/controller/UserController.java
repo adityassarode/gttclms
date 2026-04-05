@@ -11,7 +11,10 @@ import com.gttc.lms.service.AuthService;
 import com.gttc.lms.service.CurrentUserResolver;
 import com.gttc.lms.service.DtoMapper;
 import jakarta.validation.Valid;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -44,7 +47,7 @@ public class UserController {
 
     @GetMapping("/me")
     public UserResponse me(@AuthenticationPrincipal Object principal, Authentication authentication) {
-        return DtoMapper.toUser(currentUserResolver.resolve(principal, authentication));
+        return toUserResponse(currentUserResolver.resolve(principal, authentication));
     }
 
     @PostMapping("/verify")
@@ -60,7 +63,15 @@ public class UserController {
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public List<UserResponse> all() {
-        return userRepository.findAll().stream().map(DtoMapper::toUser).collect(Collectors.toList());
+        List<User> users = userRepository.findAll();
+        Map<Long, String> avatarsByUserId = resolveAvatarUrls(users);
+
+        return users.stream()
+            .map(user -> DtoMapper.toUser(
+                user,
+                avatarsByUserId.getOrDefault(user.getId(), user.getAvatarUrl())
+            ))
+            .collect(Collectors.toList());
     }
 
     @PostMapping("/ban")
@@ -78,7 +89,7 @@ public class UserController {
         }
         user.setStatus(UserStatus.BANNED);
         userRepository.save(user);
-        return DtoMapper.toUser(user);
+        return toUserResponse(user);
     }
 
     @DeleteMapping("/{id}")
@@ -87,5 +98,43 @@ public class UserController {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found"));
         userRepository.delete(user);
+    }
+
+    private UserResponse toUserResponse(User user) {
+        return DtoMapper.toUser(user, resolveAvatarUrl(user));
+    }
+
+    private String resolveAvatarUrl(User user) {
+        if (user == null || user.getId() == null) {
+            return user == null ? null : user.getAvatarUrl();
+        }
+
+        return userRepository.findResolvedAvatarUrlByUserId(user.getId())
+                .filter(value -> !value.isBlank())
+                .orElse(user.getAvatarUrl());
+    }
+
+    private Map<Long, String> resolveAvatarUrls(List<User> users) {
+        if (users == null || users.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<Long> userIds = users.stream()
+                .map(User::getId)
+                .filter(Objects::nonNull)
+                .toList();
+
+        if (userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        return userRepository.findResolvedAvatarUrlsByUserIds(userIds).stream()
+                .filter(row -> row.getUserId() != null)
+                .filter(row -> row.getAvatarUrl() != null && !row.getAvatarUrl().isBlank())
+                .collect(Collectors.toMap(
+                        UserRepository.ResolvedAvatarRow::getUserId,
+                        UserRepository.ResolvedAvatarRow::getAvatarUrl,
+                        (left, right) -> left
+                ));
     }
 }

@@ -19,6 +19,7 @@ com/gttc/lms/controller/ReservationController.class
 com/gttc/lms/service/CurrentUserResolver.class
 com/gttc/lms/repository/BookRepository.class
 com/gttc/lms/model/enums/ReservationStatus.class
+com/gttc/lms/service/UserUuidResolver.class
 com/gttc/lms/controller/BorrowController.class
 com/gttc/lms/model/Favorite.class
 com/gttc/lms/model/enums/UserStatus.class
@@ -53,6 +54,7 @@ com/gttc/lms/service/BookService.class
 com/gttc/lms/service/BackendWarmupService.class
 com/gttc/lms/config/CacheConfig.class
 com/gttc/lms/model/enums/AuthProvider.class
+com/gttc/lms/repository/UserRepository$ResolvedAvatarRow.class
 com/gttc/lms/config/SupabaseIssuerAuthenticationManagerResolver$1.class
 com/gttc/lms/dto/BorrowResponse.class
 com/gttc/lms/repository/UserRepository.class

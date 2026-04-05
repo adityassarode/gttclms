@@ -267,8 +267,8 @@ export default function AdminUsersPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-hidden rounded-xl border border-border/60">
-            <Table className="min-w-[860px]">
+          <div className="overflow-x-auto rounded-xl border border-border/60">
+            <Table className="min-w-[760px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>User</TableHead>

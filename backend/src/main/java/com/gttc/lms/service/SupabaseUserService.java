@@ -51,6 +51,7 @@ public class SupabaseUserService {
 
         String displayName = resolveDisplayName(jwt, resolvedEmail);
         String phone = resolvePhone(jwt);
+        String avatarUrl = resolveAvatarUrl(jwt);
 
         Optional<User> byProviderId = userRepository.findByProviderAndProviderId(AuthProvider.SUPABASE, subject);
         Optional<User> byEmail = userRepository.findByEmail(resolvedEmail);
@@ -72,6 +73,10 @@ public class SupabaseUserService {
 
         if (isBlank(user.getPhone()) && !isBlank(phone)) {
             user.setPhone(phone);
+        }
+
+        if (isBlank(user.getAvatarUrl()) && !isBlank(avatarUrl)) {
+            user.setAvatarUrl(avatarUrl);
         }
 
         if (bootstrapAdmin && user.getRole() != Role.ADMIN) {
@@ -140,6 +145,25 @@ public class SupabaseUserService {
             return directPhone;
         }
         return safeTrim(readUserMetadata(jwt, "phone"));
+    }
+
+    private String resolveAvatarUrl(Jwt jwt) {
+        String directAvatar = safeTrim(jwt.getClaimAsString("avatar_url"));
+        if (directAvatar != null) {
+            return directAvatar;
+        }
+
+        String directPicture = safeTrim(jwt.getClaimAsString("picture"));
+        if (directPicture != null) {
+            return directPicture;
+        }
+
+        String metadataAvatar = safeTrim(readUserMetadata(jwt, "avatar_url"));
+        if (metadataAvatar != null) {
+            return metadataAvatar;
+        }
+
+        return safeTrim(readUserMetadata(jwt, "picture"));
     }
 
     @SuppressWarnings("unchecked")

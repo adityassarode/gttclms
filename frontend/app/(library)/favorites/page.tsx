@@ -38,12 +38,9 @@ function FavoriteCard({
   return (
     <Card className="group overflow-hidden border-border/50 bg-card hover:shadow-lg hover:shadow-primary/5 transition-all duration-300">
       <CardContent className="p-0">
-        <div className="flex flex-col gap-4 p-4 sm:flex-row">
-          <Link
-            href={`/book/${book.id}`}
-            className="relative mx-auto flex-shrink-0 sm:mx-0"
-          >
-            <div className="relative h-40 w-28 overflow-hidden rounded-lg bg-muted sm:h-36 sm:w-24">
+        <div className="flex items-start gap-3 p-4 sm:gap-4">
+          <Link href={`/book/${book.id}`} className="relative flex-shrink-0">
+            <div className="relative h-32 w-24 overflow-hidden rounded-lg bg-muted sm:h-36 sm:w-24">
               {!imageLoaded && <Skeleton className="absolute inset-0" />}
               <Image
                 src={toCoverUrl(book.coverUrl)}
@@ -59,7 +56,7 @@ function FavoriteCard({
             </div>
           </Link>
 
-          <div className="flex flex-1 flex-col justify-between py-1">
+          <div className="flex min-w-0 flex-1 flex-col justify-between py-1">
             <div>
               <Badge variant="outline" className="mb-2 text-[10px] font-normal">
                 {book.category}
@@ -205,8 +202,8 @@ export default function FavoritesPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, index) => (
             <Card key={index} className="border-border/50 bg-card">
-              <CardContent className="flex flex-col gap-4 p-4 sm:flex-row">
-                <Skeleton className="h-36 w-24 rounded-lg" />
+              <CardContent className="flex items-start gap-3 p-4 sm:gap-4">
+                <Skeleton className="h-32 w-24 rounded-lg sm:h-36" />
                 <div className="space-y-2 flex-1">
                   <Skeleton className="h-4 w-20" />
                   <Skeleton className="h-5 w-4/5" />

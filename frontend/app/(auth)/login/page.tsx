@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
+import { isAdminRole, isUserRole } from "@/lib/role-utils";
 import { getErrorMessage } from "@/lib/ui-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,6 +88,11 @@ function LoginPageContent() {
       return;
     }
 
+    if (isAdminRole(user.role)) {
+      router.replace("/admin");
+      return;
+    }
+
     const redirectTo = resolveRedirectTarget();
 
     try {
@@ -95,7 +101,7 @@ function LoginPageContent() {
       // ignore session storage failures
     }
 
-    if (user.role === "USER" && !user.verified) {
+    if (isUserRole(user.role) && !user.verified) {
       router.replace(`/verify?redirect=${encodeURIComponent(redirectTo)}`);
       return;
     }
@@ -151,7 +157,7 @@ function LoginPageContent() {
         return;
       }
 
-      if (profile.role === "USER" && !profile.verified) {
+      if (isUserRole(profile.role) && !profile.verified) {
         toast.success(
           "Account created. Verify your student ID to unlock restricted actions.",
         );
@@ -159,7 +165,7 @@ function LoginPageContent() {
         return;
       }
 
-      if (profile.role === "ADMIN") {
+      if (isAdminRole(profile.role)) {
         toast.success("Admin login successful");
         router.replace("/admin");
         return;

@@ -1,6 +1,7 @@
 package com.gttc.lms.model;
 
 import com.gttc.lms.model.enums.ReservationStatus;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -22,31 +23,33 @@ public class Reservation {
     @UuidGenerator
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    private User user;
+    @Column(name = "user_id", nullable = false)
+    private UUID userId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "book_id")
     private Book book;
 
+    @Column(name = "reserved_at")
     private Instant reservedAt;
 
+    @Column(name = "expires_at")
     private Instant expiresAt;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "status")
     private ReservationStatus status;
 
     public UUID getId() {
         return id;
     }
 
-    public User getUser() {
-        return user;
+    public UUID getUserId() {
+        return userId;
     }
 
-    public void setUser(User user) {
-        this.user = user;
+    public void setUserId(UUID userId) {
+        this.userId = userId;
     }
 
     public Book getBook() {

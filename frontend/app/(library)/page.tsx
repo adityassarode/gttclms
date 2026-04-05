@@ -90,10 +90,10 @@ function BookCard({
   return (
     <Card className="overflow-hidden border-border/50 bg-card transition-all hover:shadow-lg hover:shadow-primary/5">
       <CardContent className="p-4">
-        <div className="flex flex-col gap-4 p-4 sm:flex-row">
+        <div className="flex items-start gap-3 p-2 sm:gap-4 sm:p-4">
           <Link
             href={`/book/${book.id}`}
-            className="relative mx-auto h-44 w-32 overflow-hidden rounded-lg bg-muted sm:mx-0 sm:h-40 sm:w-28"
+            className="relative h-32 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-muted sm:h-40 sm:w-28"
           >
             {!loaded && <Skeleton className="absolute inset-0" />}
             <Image
@@ -108,7 +108,7 @@ function BookCard({
               sizes="112px"
             />
           </Link>
-          <div className="flex flex-1 flex-col justify-between">
+          <div className="flex min-w-0 flex-1 flex-col justify-between">
             <div>
               <Badge variant="outline" className="mb-2 text-[10px]">
                 {book.category}
@@ -443,8 +443,8 @@ function DashboardPageContent() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, index) => (
               <Card key={index} className="border-border/50 bg-card">
-                <CardContent className="flex flex-col gap-4 p-4 sm:flex-row">
-                  <Skeleton className="h-40 w-28 rounded-lg" />
+                <CardContent className="flex items-start gap-3 p-4 sm:gap-4">
+                  <Skeleton className="h-32 w-24 rounded-lg sm:h-40 sm:w-28" />
                   <div className="flex-1 space-y-2">
                     <Skeleton className="h-4 w-20" />
                     <Skeleton className="h-5 w-4/5" />

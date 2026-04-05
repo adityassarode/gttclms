@@ -101,10 +101,10 @@ function ReservationCard({
       )}
     >
       <CardContent className="p-0">
-        <div className="flex flex-col gap-4 p-4 sm:flex-row">
+        <div className="flex items-start gap-3 p-4 sm:gap-4">
           <Link
             href={`/book/${reservation.book.id}`}
-            className="relative mx-auto h-40 w-28 flex-shrink-0 overflow-hidden rounded-lg bg-muted sm:mx-0 sm:h-32 sm:w-20"
+            className="relative h-32 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-muted"
           >
             {!loaded && <Skeleton className="absolute inset-0" />}
             <Image
@@ -120,7 +120,7 @@ function ReservationCard({
             />
           </Link>
 
-          <div className="flex flex-1 flex-col justify-between py-1">
+          <div className="flex min-w-0 flex-1 flex-col justify-between py-1">
             <div>
               <Badge
                 variant={
@@ -302,7 +302,7 @@ export default function ReservedPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, index) => (
             <Card key={index} className="border-border/50 bg-card">
-              <CardContent className="flex flex-col gap-4 p-4 sm:flex-row">
+              <CardContent className="flex items-start gap-3 p-4 sm:gap-4">
                 <Skeleton className="h-32 w-20 rounded-lg" />
                 <div className="space-y-2 flex-1">
                   <Skeleton className="h-4 w-20" />

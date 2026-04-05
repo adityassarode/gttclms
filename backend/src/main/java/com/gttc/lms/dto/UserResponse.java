@@ -7,6 +7,7 @@ public class UserResponse {
     private Long id;
     private String email;
     private String name;
+    private String avatarUrl;
     private String phone;
     private String registerNumber;
     private String department;
@@ -38,6 +39,14 @@ public class UserResponse {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
     }
 
     public String getPhone() {

@@ -20,38 +20,52 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(name = "email", nullable = false, unique = true)
     private String email;
 
+    @Column(name = "password_hash")
     private String passwordHash;
 
-    @Column(nullable = false)
+    @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "phone")
     private String phone;
 
+    @Column(name = "register_number")
     private String registerNumber;
 
+    @Column(name = "department")
     private String department;
 
+    @Column(name = "semester")
     private String semester;
 
     @Column(name = "academic_year")
     private String year;
 
+    @Column(name = "provider_id")
     private String providerId;
 
+    @Column(name = "avatar_url")
+    private String avatarUrl;
+
     @Enumerated(EnumType.STRING)
+    @Column(name = "role")
     private Role role;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "status")
     private UserStatus status;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "provider")
     private AuthProvider provider;
 
+    @Column(name = "verified")
     private boolean verified;
 
+    @Column(name = "created_at")
     private Instant createdAt = Instant.now();
 
     public Long getId() {
@@ -128,6 +142,14 @@ public class User {
 
     public void setProviderId(String providerId) {
         this.providerId = providerId;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
     }
 
     public Role getRole() {

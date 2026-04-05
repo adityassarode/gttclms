@@ -16,10 +16,15 @@ public final class DtoMapper {
     }
 
     public static UserResponse toUser(User user) {
+        return toUser(user, user.getAvatarUrl());
+    }
+
+    public static UserResponse toUser(User user, String avatarUrl) {
         UserResponse response = new UserResponse();
         response.setId(user.getId());
         response.setEmail(user.getEmail());
         response.setName(user.getName());
+        response.setAvatarUrl(avatarUrl);
         response.setPhone(user.getPhone());
         response.setRegisterNumber(user.getRegisterNumber());
         response.setDepartment(user.getDepartment());
@@ -77,7 +82,7 @@ public final class DtoMapper {
         response.setCopies(donation.getCopies());
         response.setImage1(donation.getImage1());
         response.setImage2(donation.getImage2());
-        response.setDonorName(donation.getUser() == null ? null : donation.getUser().getName());
+        response.setDonorName(null);
         response.setCreatedAt(donation.getCreatedAt());
         return response;
     }

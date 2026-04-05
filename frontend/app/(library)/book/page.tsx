@@ -28,10 +28,10 @@ function BookListCard({ book }: { book: Book }) {
   return (
     <Card className="overflow-hidden border-border/50 bg-card transition-all hover:shadow-lg hover:shadow-primary/5">
       <CardContent className="p-4">
-        <div className="flex gap-4">
+        <div className="flex items-start gap-3 sm:gap-4">
           <Link
             href={`/book/${book.id}`}
-            className="relative h-36 w-24 shrink-0 overflow-hidden rounded-lg bg-muted"
+            className="relative h-32 w-20 shrink-0 overflow-hidden rounded-lg bg-muted sm:h-36 sm:w-24"
           >
             {!loaded ? <Skeleton className="absolute inset-0" /> : null}
             <Image
@@ -46,7 +46,7 @@ function BookListCard({ book }: { book: Book }) {
               sizes="96px"
             />
           </Link>
-          <div className="flex flex-1 flex-col justify-between">
+          <div className="flex min-w-0 flex-1 flex-col justify-between">
             <div>
               <Badge variant="outline" className="mb-2 text-[10px]">
                 {book.category}
@@ -176,8 +176,8 @@ export default function BooksPage() {
           {Array.from({ length: 9 }).map((_, index) => (
             <Card key={index} className="border-border/50 bg-card">
               <CardContent className="p-4">
-                <div className="flex gap-4">
-                  <Skeleton className="h-36 w-24 rounded-lg" />
+                <div className="flex items-start gap-3 sm:gap-4">
+                  <Skeleton className="h-32 w-20 rounded-lg sm:h-36 sm:w-24" />
                   <div className="flex-1 space-y-2">
                     <Skeleton className="h-4 w-20" />
                     <Skeleton className="h-5 w-4/5" />

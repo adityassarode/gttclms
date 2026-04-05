@@ -4,8 +4,10 @@ import com.gttc.lms.dto.DonationResponse;
 import com.gttc.lms.exception.ApiException;
 import com.gttc.lms.model.Donation;
 import com.gttc.lms.model.User;
+import com.gttc.lms.model.enums.AuthProvider;
 import com.gttc.lms.model.enums.UserStatus;
 import com.gttc.lms.repository.DonationRepository;
+import com.gttc.lms.repository.UserRepository;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,13 +30,16 @@ public class DonationService {
 
     private final DonationRepository donationRepository;
     private final EmailService emailService;
+    private final UserRepository userRepository;
     private final Path uploadDir;
 
     public DonationService(DonationRepository donationRepository,
                            EmailService emailService,
+                           UserRepository userRepository,
                            @Value("${app.storage.uploadDir}") String uploadDir) {
         this.donationRepository = donationRepository;
         this.emailService = emailService;
+        this.userRepository = userRepository;
         this.uploadDir = Paths.get(uploadDir).toAbsolutePath().normalize();
     }
 
@@ -59,8 +64,9 @@ public class DonationService {
         if (image2 != null && image2.getSize() > MAX_IMAGE_BYTES) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Image 2 exceeds 2MB");
         }
+        UUID userId = UserUuidResolver.resolve(user);
         Donation donation = new Donation();
-        donation.setUser(user);
+        donation.setUserId(userId);
         donation.setTitle(sanitizedTitle);
         donation.setAuthor(sanitizedAuthor);
         donation.setDescription(sanitizedDescription);
@@ -70,23 +76,42 @@ public class DonationService {
         donationRepository.save(donation);
         emailService.send(user.getEmail(), "Thank You for Your Donation",
                 "Thank you for donating books to GTTC Library.");
-        return DtoMapper.toDonation(donation);
+        DonationResponse response = DtoMapper.toDonation(donation);
+        response.setDonorName(user.getName());
+        return response;
     }
 
     @Transactional(readOnly = true)
     public List<DonationResponse> listAll() {
         return donationRepository.findAllByOrderByCreatedAtDesc().stream()
-                .map(DtoMapper::toDonation)
+                .map(this::toDonationWithDonorName)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public List<DonationResponse> listMine(User user) {
         validateUser(user);
-        return donationRepository.findByUserOrderByCreatedAtDesc(user)
+        UUID userId = UserUuidResolver.resolve(user);
+        return donationRepository.findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
-                .map(DtoMapper::toDonation)
+                .map(donation -> {
+                    DonationResponse response = DtoMapper.toDonation(donation);
+                    response.setDonorName(user.getName());
+                    return response;
+                })
                 .collect(Collectors.toList());
+    }
+
+    private DonationResponse toDonationWithDonorName(Donation donation) {
+        DonationResponse response = DtoMapper.toDonation(donation);
+        response.setDonorName(resolveDonorName(donation.getUserId()));
+        return response;
+    }
+
+    private String resolveDonorName(UUID userId) {
+        return userRepository.findByProviderAndProviderId(AuthProvider.SUPABASE, userId.toString())
+                .map(User::getName)
+                .orElse(null);
     }
 
     private String storeImage(MultipartFile file) {

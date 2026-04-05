@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.gttc.lms.exception.ApiException;
 import com.gttc.lms.repository.ReservationRepository;
+import com.gttc.lms.repository.UserRepository;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,11 +26,14 @@ class ReservationServiceValidationTest {
     @Mock
     private EmailService emailService;
 
+    @Mock
+    private UserRepository userRepository;
+
     private ReservationService reservationService;
 
     @BeforeEach
     void setUp() {
-        reservationService = new ReservationService(reservationRepository, bookService, emailService);
+        reservationService = new ReservationService(reservationRepository, bookService, emailService, userRepository);
     }
 
     @Test
@@ -39,7 +43,7 @@ class ReservationServiceValidationTest {
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatus());
         assertEquals("Authentication required", exception.getMessage());
-        verifyNoInteractions(reservationRepository, bookService, emailService);
+        verifyNoInteractions(reservationRepository, bookService, emailService, userRepository);
     }
 
     @Test
@@ -48,6 +52,6 @@ class ReservationServiceValidationTest {
 
         assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatus());
         assertEquals("Authentication required", exception.getMessage());
-        verifyNoInteractions(reservationRepository, bookService, emailService);
+        verifyNoInteractions(reservationRepository, bookService, emailService, userRepository);
     }
 }

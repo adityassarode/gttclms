@@ -16,16 +16,16 @@ public class Student {
     @UuidGenerator
     private UUID id;
 
-    @Column(nullable = false, unique = true)
+    @Column(name = "register_number", nullable = false, unique = true)
     private String registerNumber;
 
-    @Column(nullable = false)
+    @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(nullable = false)
+    @Column(name = "department", nullable = false)
     private String department;
 
-    @Column(nullable = false)
+    @Column(name = "semester", nullable = false)
     private String semester;
 
     @Column(name = "academic_year", nullable = false)

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { api } from "@/lib/api";
+import { isAdminRole } from "@/lib/role-utils";
 import { supabase } from "@/lib/supabase";
 import type { RegisterPayload, User } from "@/lib/types";
 
@@ -47,11 +48,88 @@ const AuthContext = React.createContext<AuthContextValue>(defaultValue);
 const OAUTH_REDIRECT_KEY = "gttc_lms_oauth_redirect";
 const LEGACY_TOKEN_KEYS = ["gttc_lms_auth_token", "token"];
 
+type SupabaseIdentity = {
+  identity_data?: Record<string, unknown> | null;
+};
+
 type SupabaseSessionUser = {
   id?: string;
   email?: string | null;
   user_metadata?: Record<string, unknown> | null;
+  identities?: SupabaseIdentity[] | null;
 };
+
+function asNonEmptyString(value: unknown) {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function normalizeAvatarUrl(url?: string | null) {
+  return asNonEmptyString(url) ?? null;
+}
+
+function extractAvatarUrl(authUser: SupabaseSessionUser | null) {
+  if (!authUser) {
+    return null;
+  }
+
+  const metadata = authUser.user_metadata || {};
+  const fromMetadata =
+    asNonEmptyString(metadata["avatar_url"]) ||
+    asNonEmptyString(metadata["picture"]) ||
+    asNonEmptyString(metadata["photo_url"]) ||
+    asNonEmptyString(metadata["photoURL"]);
+
+  if (fromMetadata) {
+    return fromMetadata;
+  }
+
+  if (!Array.isArray(authUser.identities)) {
+    return null;
+  }
+
+  for (const identity of authUser.identities) {
+    const identityData = identity?.identity_data;
+    if (!identityData) {
+      continue;
+    }
+
+    const fromIdentity =
+      asNonEmptyString(identityData["avatar_url"]) ||
+      asNonEmptyString(identityData["picture"]) ||
+      asNonEmptyString(identityData["photo_url"]) ||
+      asNonEmptyString(identityData["photoURL"]);
+
+    if (fromIdentity) {
+      return fromIdentity;
+    }
+  }
+
+  return null;
+}
+
+function withAvatar(
+  profile: User | null,
+  authUser: SupabaseSessionUser | null,
+  previousAvatarUrl?: string | null,
+) {
+  if (!profile) {
+    return null;
+  }
+
+  const avatarUrl =
+    normalizeAvatarUrl(profile.avatarUrl) ||
+    extractAvatarUrl(authUser) ||
+    normalizeAvatarUrl(previousAvatarUrl);
+
+  return {
+    ...profile,
+    avatarUrl: avatarUrl || null,
+  };
+}
 
 function clearLegacyTokenKeys() {
   try {
@@ -103,6 +181,7 @@ function buildFallbackUserProfile(
     id: authUser.id,
     email: authUser.email,
     name: fullName,
+    avatarUrl: extractAvatarUrl(authUser),
     phone: null,
     registerNumber: null,
     department: null,
@@ -119,7 +198,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isReady, setIsReady] = React.useState(false);
 
   const setSessionUser = React.useCallback((profile: User | null) => {
-    setUser(profile);
+    setUser((previous) => {
+      if (!profile) {
+        return null;
+      }
+
+      const preservedAvatarUrl =
+        normalizeAvatarUrl(profile.avatarUrl) ||
+        normalizeAvatarUrl(previous?.avatarUrl);
+
+      return {
+        ...profile,
+        avatarUrl: preservedAvatarUrl || null,
+      };
+    });
   }, []);
 
   const signInWithPassword = React.useCallback(
@@ -135,12 +227,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const accessToken = data.session?.access_token ?? null;
+      const sessionUser = (data.user as SupabaseSessionUser | null) ?? null;
       try {
-        const profile = await api.getMe(accessToken);
+        const profile = withAvatar(await api.getMe(accessToken), sessionUser);
         setSessionUser(profile);
         return profile;
       } catch {
-        const fallbackProfile = buildFallbackUserProfile(data.user);
+        const fallbackProfile = buildFallbackUserProfile(sessionUser);
         if (fallbackProfile) {
           setSessionUser(fallbackProfile);
           return fallbackProfile;
@@ -169,8 +262,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const accessToken = data.session?.access_token ?? null;
-      const profile = await api.getMe(accessToken);
-      if (profile.role !== "ADMIN") {
+      const sessionUser = (data.user as SupabaseSessionUser | null) ?? null;
+      const profile = withAvatar(await api.getMe(accessToken), sessionUser);
+      if (!isAdminRole(profile.role)) {
         try {
           await supabase.auth.signOut({ scope: "global" });
         } catch {
@@ -210,7 +304,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         const accessToken = data.session.access_token;
-        const profile = await api.getMe(accessToken);
+        const profile = withAvatar(
+          await api.getMe(accessToken),
+          (data.user as SupabaseSessionUser | null) ?? null,
+        );
         setSessionUser(profile);
         return profile;
       } catch {
@@ -276,7 +373,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = React.useCallback(async () => {
     try {
-      const profile = await api.getMe();
+      const { data: authData } = await supabase.auth.getUser();
+      const profile = withAvatar(
+        await api.getMe(),
+        (authData.user as SupabaseSessionUser | null) ?? null,
+      );
       setSessionUser(profile);
     } catch {
       try {
@@ -346,7 +447,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
 
           try {
-            const profile = await api.getMe(session.access_token);
+            const profile = withAvatar(
+              await api.getMe(session.access_token),
+              (session.user as SupabaseSessionUser | null) ?? null,
+            );
             if (!cancelled) {
               setSessionUser(profile);
             }
@@ -382,7 +486,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        const profile = await api.getMe(accessToken);
+        const profile = withAvatar(await api.getMe(accessToken), sessionUser);
         if (!cancelled) {
           setSessionUser(profile);
         }
@@ -412,7 +516,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isReady,
       isAuthenticated: Boolean(user),
-      isAdmin: user?.role === "ADMIN",
+      isAdmin: isAdminRole(user?.role),
       setProfile: setSessionUser,
       signInWithPassword,
       signInWithAdminCredentials,

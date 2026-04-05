@@ -27,7 +27,8 @@ public class FavoriteService {
     @Transactional(readOnly = true)
     public List<BookResponse> listFavorites(User user) {
         validateUser(user);
-        return favoriteRepository.findByUserOrderByCreatedAtDesc(user)
+        UUID userId = UserUuidResolver.resolve(user);
+        return favoriteRepository.findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
                 .map(Favorite::getBook)
                 .map(DtoMapper::toBook)
@@ -36,21 +37,22 @@ public class FavoriteService {
 
     public void addFavorite(User user, UUID bookId) {
         validateUser(user);
+        UUID userId = UserUuidResolver.resolve(user);
         Book book = bookService.findBook(bookId);
-        favoriteRepository.findByUserAndBook(user, book)
-                .orElseGet(() -> favoriteRepository.save(createFavorite(user, book)));
+        favoriteRepository.findByUserIdAndBookId(userId, bookId)
+                .orElseGet(() -> favoriteRepository.save(createFavorite(userId, book)));
     }
 
     public void removeFavorite(User user, UUID bookId) {
         validateUser(user);
-        Book book = bookService.findBook(bookId);
-        favoriteRepository.findByUserAndBook(user, book)
+        UUID userId = UserUuidResolver.resolve(user);
+        favoriteRepository.findByUserIdAndBookId(userId, bookId)
                 .ifPresent(favoriteRepository::delete);
     }
 
-    private Favorite createFavorite(User user, Book book) {
+    private Favorite createFavorite(UUID userId, Book book) {
         Favorite favorite = new Favorite();
-        favorite.setUser(user);
+        favorite.setUserId(userId);
         favorite.setBook(book);
         return favorite;
     }

@@ -40,7 +40,8 @@ public class BorrowService {
         if (!user.isVerified()) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Verify your register number before borrowing");
         }
-        long activeCount = borrowRepository.countByUserAndStatus(user, BorrowStatus.BORROWED);
+        UUID userId = UserUuidResolver.resolve(user);
+        long activeCount = borrowRepository.countByUserIdAndStatus(userId, BorrowStatus.BORROWED);
         if (activeCount >= MAX_BORROWS) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Borrow limit reached (max 2 books)");
         }
@@ -50,7 +51,7 @@ public class BorrowService {
         }
         book.setCopiesAvailable(book.getCopiesAvailable() - 1);
         Borrow borrow = new Borrow();
-        borrow.setUser(user);
+        borrow.setUserId(userId);
         borrow.setBook(book);
         borrow.setBorrowedAt(Instant.now());
         borrow.setDueAt(Instant.now().plus(7, ChronoUnit.DAYS));
@@ -64,9 +65,10 @@ public class BorrowService {
     @Transactional
     public BorrowResponse returnBook(User user, UUID borrowId) {
         validateUser(user);
+        UUID userId = UserUuidResolver.resolve(user);
         Borrow borrow = borrowRepository.findById(borrowId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Borrow record not found"));
-        if (!borrow.getUser().getId().equals(user.getId())) {
+        if (!borrow.getUserId().equals(userId)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to return this book");
         }
         if (borrow.getStatus() == BorrowStatus.RETURNED) {
@@ -94,7 +96,8 @@ public class BorrowService {
     @Transactional(readOnly = true)
     public List<BorrowResponse> listBorrows(User user) {
         validateUser(user);
-        return borrowRepository.findByUserOrderByBorrowedAtDesc(user)
+        UUID userId = UserUuidResolver.resolve(user);
+        return borrowRepository.findByUserIdOrderByBorrowedAtDesc(userId)
                 .stream()
                 .map(DtoMapper::toBorrow)
                 .collect(Collectors.toList());

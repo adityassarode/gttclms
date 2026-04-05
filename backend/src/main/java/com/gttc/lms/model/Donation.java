@@ -2,11 +2,8 @@ package com.gttc.lms.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
@@ -20,37 +17,40 @@ public class Donation {
     @UuidGenerator
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    private User user;
+    @Column(name = "user_id", nullable = false)
+    private UUID userId;
 
-    @Column(nullable = false)
+    @Column(name = "title", nullable = false)
     private String title;
 
-    @Column(nullable = false)
+    @Column(name = "author", nullable = false)
     private String author;
 
-    @Column(length = 2000)
+    @Column(name = "description", length = 2000)
     private String description;
 
+    @Column(name = "copies")
     private int copies;
 
+    @Column(name = "image1")
     private String image1;
 
+    @Column(name = "image2")
     private String image2;
 
+    @Column(name = "created_at")
     private Instant createdAt = Instant.now();
 
     public UUID getId() {
         return id;
     }
 
-    public User getUser() {
-        return user;
+    public UUID getUserId() {
+        return userId;
     }
 
-    public void setUser(User user) {
-        this.user = user;
+    public void setUserId(UUID userId) {
+        this.userId = userId;
     }
 
     public String getTitle() {

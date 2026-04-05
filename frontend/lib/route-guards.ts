@@ -3,6 +3,7 @@
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { isAdminRole, isUserRole } from "@/lib/role-utils";
 
 function normalizeRedirectPath(path?: string | null) {
   if (!path) {
@@ -25,7 +26,7 @@ export function useProtectedPage(opts?: { redirectPath?: string }) {
   const { isReady, user } = useAuth();
 
   const redirectTarget = normalizeRedirectPath(opts?.redirectPath || pathname);
-  const needsVerification = user && user.role === "USER" && !user.verified;
+  const needsVerification = user && isUserRole(user.role) && !user.verified;
 
   React.useEffect(() => {
     if (!isReady) {
@@ -62,7 +63,7 @@ export function useProtectedAdminPage() {
   const router = useRouter();
   const { isReady, user } = useAuth();
   const redirectTarget = normalizeRedirectPath(pathname);
-  const isAdmin = user?.role === "ADMIN";
+  const isAdmin = isAdminRole(user?.role);
 
   React.useEffect(() => {
     if (!isReady) {
@@ -96,7 +97,7 @@ export function useRequireLoginAction() {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useAuth();
-  const needsVerification = user && user.role === "USER" && !user.verified;
+  const needsVerification = user && isUserRole(user.role) && !user.verified;
 
   return React.useCallback(
     (redirectPath?: string) => {

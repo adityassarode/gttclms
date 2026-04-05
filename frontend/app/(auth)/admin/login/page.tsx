@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
+import { isAdminRole } from "@/lib/role-utils";
 import { getErrorMessage } from "@/lib/ui-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +39,7 @@ export default function AdminLoginPage() {
       return;
     }
 
-    if (user.role === "ADMIN") {
+    if (isAdminRole(user.role)) {
       router.replace("/admin");
       return;
     }
@@ -74,7 +75,7 @@ export default function AdminLoginPage() {
         return;
       }
 
-      if (profile.role !== "ADMIN") {
+      if (!isAdminRole(profile.role)) {
         await logout();
         toast.error("This account does not have admin access");
         return;

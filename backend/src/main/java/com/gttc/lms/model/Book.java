@@ -17,28 +17,34 @@ public class Book {
     @UuidGenerator
     private UUID id;
 
-    @Column(nullable = false)
+    @Column(name = "title", nullable = false)
     private String title;
 
-    @Column(nullable = false)
+    @Column(name = "author", nullable = false)
     private String author;
 
-    @Column(length = 2000)
+    @Column(name = "description", length = 2000)
     private String description;
 
-    @Column(nullable = false)
+    @Column(name = "category", nullable = false)
     private String category;
 
+    @Column(name = "keywords")
     private String keywords;
 
+    @Column(name = "cover_url")
     private String coverUrl;
 
+    @Column(name = "copies_total")
     private int copiesTotal;
 
+    @Column(name = "copies_available")
     private int copiesAvailable;
 
+    @Column(name = "featured")
     private boolean featured;
 
+    @Column(name = "created_at")
     private Instant createdAt = Instant.now();
 
     public UUID getId() {

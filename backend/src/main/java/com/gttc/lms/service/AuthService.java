@@ -72,7 +72,7 @@ public class AuthService {
         user.setProvider(AuthProvider.LOCAL);
         user.setVerified(false);
         userRepository.save(user);
-        return new AuthResponse(jwtService.createToken(user), DtoMapper.toUser(user));
+        return new AuthResponse(jwtService.createToken(user), toUserResponse(user));
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -85,7 +85,7 @@ public class AuthService {
         if (user.getPasswordHash() == null || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
-        return new AuthResponse(jwtService.createToken(user), DtoMapper.toUser(user));
+        return new AuthResponse(jwtService.createToken(user), toUserResponse(user));
     }
 
     public AuthResponse adminLogin(AdminLoginRequest request) {
@@ -103,7 +103,7 @@ public class AuthService {
                     user.setVerified(true);
                     return userRepository.save(user);
                 });
-        return new AuthResponse(jwtService.createToken(admin), DtoMapper.toUser(admin));
+        return new AuthResponse(jwtService.createToken(admin), toUserResponse(admin));
     }
 
     public AuthResponse loginWithGoogle(GoogleLoginRequest request) {
@@ -131,7 +131,7 @@ public class AuthService {
         if (user.getStatus() == UserStatus.BANNED) {
             throw new ApiException(HttpStatus.FORBIDDEN, "User is banned");
         }
-        return new AuthResponse(jwtService.createToken(user), DtoMapper.toUser(user));
+        return new AuthResponse(jwtService.createToken(user), toUserResponse(user));
     }
 
     public UserResponse verifyStudent(User user, VerifyStudentRequest request) {
@@ -148,7 +148,21 @@ public class AuthService {
         userRepository.save(user);
         emailService.send(user.getEmail(), "Welcome to GTTC Library",
                 "Welcome to GTTC Library. Your account is now verified.");
-        return DtoMapper.toUser(user);
+        return toUserResponse(user);
+    }
+
+    private UserResponse toUserResponse(User user) {
+        return DtoMapper.toUser(user, resolveAvatarUrl(user));
+    }
+
+    private String resolveAvatarUrl(User user) {
+        if (user == null || user.getId() == null) {
+            return user == null ? null : user.getAvatarUrl();
+        }
+
+        return userRepository.findResolvedAvatarUrlByUserId(user.getId())
+                .filter(value -> !value.isBlank())
+                .orElse(user.getAvatarUrl());
     }
 
     private GoogleTokenInfo verifyGoogleToken(String idToken) {

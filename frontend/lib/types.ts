@@ -8,6 +8,7 @@ export interface User {
   id: ApiId;
   email: string;
   name: string;
+  avatarUrl?: string | null;
   phone?: string | null;
   registerNumber?: string | null;
   department?: string | null;
