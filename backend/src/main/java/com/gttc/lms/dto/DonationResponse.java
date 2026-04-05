@@ -12,6 +12,9 @@ public class DonationResponse {
     private String image1;
     private String image2;
     private String donorName;
+    private boolean approved;
+    private UUID approvedBookId;
+    private Instant approvedAt;
     private Instant createdAt;
 
     public UUID getId() {
@@ -76,6 +79,30 @@ public class DonationResponse {
 
     public void setDonorName(String donorName) {
         this.donorName = donorName;
+    }
+
+    public boolean isApproved() {
+        return approved;
+    }
+
+    public void setApproved(boolean approved) {
+        this.approved = approved;
+    }
+
+    public UUID getApprovedBookId() {
+        return approvedBookId;
+    }
+
+    public void setApprovedBookId(UUID approvedBookId) {
+        this.approvedBookId = approvedBookId;
+    }
+
+    public Instant getApprovedAt() {
+        return approvedAt;
+    }
+
+    public void setApprovedAt(Instant approvedAt) {
+        this.approvedAt = approvedAt;
     }
 
     public Instant getCreatedAt() {

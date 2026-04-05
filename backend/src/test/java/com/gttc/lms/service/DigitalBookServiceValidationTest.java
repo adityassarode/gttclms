@@ -59,7 +59,8 @@ class DigitalBookServiceValidationTest {
                 "Author",
                 "Description",
                 "https://example.com/third-book.pdf",
-                null
+            null,
+            null
         ));
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
@@ -88,7 +89,8 @@ class DigitalBookServiceValidationTest {
                 "Author",
                 "Description",
                 null,
-                pdfFile
+            pdfFile,
+            null
         ));
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());

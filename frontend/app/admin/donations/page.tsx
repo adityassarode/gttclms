@@ -36,12 +36,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-function donationStatusLabel(createdAt: string) {
-  const age = Date.now() - new Date(createdAt).getTime();
-  const twoDays = 2 * 24 * 60 * 60 * 1000;
-  return age <= twoDays ? "New" : "Archived";
-}
-
 export default function AdminDonationsPage() {
   const [donations, setDonations] = React.useState<DonationRecord[]>([]);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -50,6 +44,7 @@ export default function AdminDonationsPage() {
     React.useState<DonationRecord | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [approvingId, setApprovingId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -85,7 +80,7 @@ export default function AdminDonationsPage() {
         donation.title.toLowerCase().includes(searchLower) ||
         donation.author.toLowerCase().includes(searchLower) ||
         (donation.donorName || "").toLowerCase().includes(searchLower);
-      const status = donationStatusLabel(donation.createdAt).toLowerCase();
+      const status = donation.approved ? "approved" : "pending";
       const matchesStatus = statusFilter === "all" || status === statusFilter;
       return matchesSearch && matchesStatus;
     });
@@ -94,16 +89,31 @@ export default function AdminDonationsPage() {
   const stats = React.useMemo(
     () => ({
       total: donations.length,
-      new: donations.filter(
-        (donation) => donationStatusLabel(donation.createdAt) === "New",
-      ).length,
-      archived: donations.filter(
-        (donation) => donationStatusLabel(donation.createdAt) === "Archived",
-      ).length,
+      pending: donations.filter((donation) => !donation.approved).length,
+      approved: donations.filter((donation) => donation.approved).length,
       copies: donations.reduce((sum, donation) => sum + donation.copies, 0),
     }),
     [donations],
   );
+
+  const handleApprove = async (donation: DonationRecord) => {
+    const id = String(donation.id);
+    setApprovingId(id);
+    try {
+      const approved = await api.approveDonation(donation.id);
+      setDonations((current) =>
+        current.map((row) => (String(row.id) === id ? approved : row)),
+      );
+      if (selectedDonation && String(selectedDonation.id) === id) {
+        setSelectedDonation(approved);
+      }
+      toast.success("Donation approved and added to catalog");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Unable to approve donation"));
+    } finally {
+      setApprovingId(null);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -137,8 +147,8 @@ export default function AdminDonationsPage() {
                 <Clock className="h-5 w-5 text-amber-600" />
               </div>
               <div>
-                <p className="text-2xl font-semibold">{stats.new}</p>
-                <p className="text-sm text-muted-foreground">New</p>
+                <p className="text-2xl font-semibold">{stats.pending}</p>
+                <p className="text-sm text-muted-foreground">Pending</p>
               </div>
             </div>
           </CardContent>
@@ -150,8 +160,8 @@ export default function AdminDonationsPage() {
                 <CheckCircle className="h-5 w-5 text-emerald-600" />
               </div>
               <div>
-                <p className="text-2xl font-semibold">{stats.archived}</p>
-                <p className="text-sm text-muted-foreground">Archived</p>
+                <p className="text-2xl font-semibold">{stats.approved}</p>
+                <p className="text-sm text-muted-foreground">Approved</p>
               </div>
             </div>
           </CardContent>
@@ -190,8 +200,8 @@ export default function AdminDonationsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
-                <SelectItem value="new">New</SelectItem>
-                <SelectItem value="archived">Archived</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -216,7 +226,7 @@ export default function AdminDonationsPage() {
                   Status
                 </th>
                 <th className="px-3 py-4 text-right text-sm font-medium text-muted-foreground sm:px-6">
-                  Action
+                  Actions
                 </th>
               </tr>
             </thead>
@@ -246,28 +256,41 @@ export default function AdminDonationsPage() {
                     {toIsoDate(donation.createdAt)}
                   </td>
                   <td className="px-3 py-4 sm:px-6">
-                    {donationStatusLabel(donation.createdAt) === "New" ? (
-                      <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20">
-                        New
+                    {!donation.approved ? (
+                      <Badge className="border-amber-500/20 bg-amber-500/10 text-amber-600">
+                        Pending
                       </Badge>
                     ) : (
-                      <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
-                        Archived
+                      <Badge className="border-emerald-500/20 bg-emerald-500/10 text-emerald-600">
+                        Approved
                       </Badge>
                     )}
                   </td>
                   <td className="px-3 py-4 text-right sm:px-6">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedDonation(donation);
-                        setIsViewDialogOpen(true);
-                      }}
-                    >
-                      <Eye className="mr-2 h-4 w-4" />
-                      View
-                    </Button>
+                    <div className="inline-flex items-center gap-2">
+                      {!donation.approved ? (
+                        <Button
+                          size="sm"
+                          onClick={() => handleApprove(donation)}
+                          disabled={approvingId === String(donation.id)}
+                        >
+                          {approvingId === String(donation.id)
+                            ? "Approving..."
+                            : "Approve"}
+                        </Button>
+                      ) : null}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedDonation(donation);
+                          setIsViewDialogOpen(true);
+                        }}
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        View
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -316,6 +339,14 @@ export default function AdminDonationsPage() {
                 </div>
               </div>
 
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Status
+                </p>
+                <p className="text-foreground">
+                  {selectedDonation.approved ? "Approved" : "Pending Approval"}
+                </p>
+              </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
                   Description

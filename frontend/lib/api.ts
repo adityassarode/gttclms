@@ -479,6 +479,10 @@ function normalizeDigitalBookPayload(payload: DigitalBookCreatePayload) {
     formData.append("pdfFile", payload.pdfFile);
   }
 
+  if (payload.coverImage) {
+    formData.append("coverImage", payload.coverImage);
+  }
+
   return formData;
 }
 
@@ -780,6 +784,26 @@ export const api = {
       "Unable to load donations",
       undefined,
       false,
+    );
+  },
+
+  approveDonation(donationId: string | number) {
+    return request<DonationRecord>(
+      `/api/donations/${donationId}/approve`,
+      {
+        method: "POST",
+      },
+      "Unable to approve donation",
+    );
+  },
+
+  async deleteDonation(donationId: string | number) {
+    await request<void>(
+      `/api/donations/${donationId}`,
+      {
+        method: "DELETE",
+      },
+      "Unable to remove donation",
     );
   },
 

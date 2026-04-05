@@ -192,10 +192,7 @@ export default function AdminBooksPage() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button
-              className="w-full gap-2 sm:w-auto"
-              onClick={openCreateDialog}
-            >
+            <Button className="gap-2" onClick={openCreateDialog}>
               <Plus className="h-4 w-4" />
               Add Book
             </Button>

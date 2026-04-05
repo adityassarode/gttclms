@@ -38,6 +38,18 @@ public class Donation {
     @Column(name = "image2")
     private String image2;
 
+    @Column(name = "approved")
+    private boolean approved;
+
+    @Column(name = "approved_at")
+    private Instant approvedAt;
+
+    @Column(name = "approved_by_user_id")
+    private UUID approvedByUserId;
+
+    @Column(name = "approved_book_id")
+    private UUID approvedBookId;
+
     @Column(name = "created_at")
     private Instant createdAt = Instant.now();
 
@@ -99,6 +111,38 @@ public class Donation {
 
     public void setImage2(String image2) {
         this.image2 = image2;
+    }
+
+    public boolean isApproved() {
+        return approved;
+    }
+
+    public void setApproved(boolean approved) {
+        this.approved = approved;
+    }
+
+    public Instant getApprovedAt() {
+        return approvedAt;
+    }
+
+    public void setApprovedAt(Instant approvedAt) {
+        this.approvedAt = approvedAt;
+    }
+
+    public UUID getApprovedByUserId() {
+        return approvedByUserId;
+    }
+
+    public void setApprovedByUserId(UUID approvedByUserId) {
+        this.approvedByUserId = approvedByUserId;
+    }
+
+    public UUID getApprovedBookId() {
+        return approvedBookId;
+    }
+
+    public void setApprovedBookId(UUID approvedBookId) {
+        this.approvedBookId = approvedBookId;
     }
 
     public Instant getCreatedAt() {

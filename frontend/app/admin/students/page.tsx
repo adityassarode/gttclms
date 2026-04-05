@@ -197,7 +197,7 @@ export default function AdminStudentsPage() {
 
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="w-full rounded-xl sm:w-auto">
+            <Button className="rounded-xl">
               <Plus className="mr-2 h-4 w-4" />
               Add Student
             </Button>

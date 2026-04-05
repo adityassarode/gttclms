@@ -113,10 +113,7 @@ export default function AdminUsersPage() {
       return;
     }
 
-    const registerNumber = target.registerNumber?.trim();
-    const email = target.email?.trim();
-
-    if (!registerNumber && !email) {
+    if (target.id === undefined || target.id === null) {
       toast.error("Unable to ban this user");
       return;
     }
@@ -124,8 +121,7 @@ export default function AdminUsersPage() {
     setIsBanningId(target.id);
     try {
       const updated = await api.banUser({
-        ...(registerNumber ? { registerNumber } : {}),
-        ...(!registerNumber && email ? { email } : {}),
+        id: target.id,
       });
 
       setUsers((current) =>

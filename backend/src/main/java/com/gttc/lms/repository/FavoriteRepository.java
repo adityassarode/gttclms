@@ -9,5 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface FavoriteRepository extends JpaRepository<Favorite, UUID> {
     List<Favorite> findByUserIdOrderByCreatedAtDesc(UUID userId);
 
+    long countByBook_Id(UUID bookId);
+
     Optional<Favorite> findByUserIdAndBookId(UUID userId, UUID bookId);
 }

@@ -10,6 +10,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ReservationRepository extends JpaRepository<Reservation, UUID> {
     long countByUserIdAndStatus(UUID userId, ReservationStatus status);
 
+    long countByBook_Id(UUID bookId);
+
+    long countByBook_IdAndStatus(UUID bookId, ReservationStatus status);
+
     List<Reservation> findByUserIdOrderByReservedAtDesc(UUID userId);
 
     List<Reservation> findByStatusAndExpiresAtBefore(ReservationStatus status, Instant time);

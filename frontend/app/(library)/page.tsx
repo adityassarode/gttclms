@@ -9,6 +9,7 @@ import {
   Heart,
   ArrowRight,
   BookOpen,
+  Gift,
   FileText,
   ExternalLink,
   Sparkles,
@@ -16,12 +17,13 @@ import {
   Clock,
   Filter,
   History,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api, getUploadUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useRequireLoginAction } from "@/lib/route-guards";
-import type { ApiId, Book } from "@/lib/types";
+import type { ApiId, Book, DonationRecord } from "@/lib/types";
 import { getErrorMessage, toCoverUrl, toIsoDate } from "@/lib/ui-helpers";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -36,6 +38,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const RECENT_BOOKS_KEY = "gttc_recent_books";
 
@@ -186,6 +199,11 @@ function DashboardPageContent() {
   const [category, setCategory] = React.useState("all");
   const [favorites, setFavorites] = React.useState<Set<ApiId>>(new Set());
   const [recent, setRecent] = React.useState<RecentBook[]>([]);
+  const [myDonations, setMyDonations] = React.useState<DonationRecord[]>([]);
+  const [donationsLoading, setDonationsLoading] = React.useState(false);
+  const [removingDonationId, setRemovingDonationId] = React.useState<
+    string | null
+  >(null);
 
   React.useEffect(() => {
     setSearch(queryInUrl);
@@ -261,6 +279,38 @@ function DashboardPageContent() {
     };
   }, [isAuthenticated]);
 
+  React.useEffect(() => {
+    if (!isAuthenticated) {
+      setMyDonations([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadDonations = async () => {
+      setDonationsLoading(true);
+      try {
+        const rows = await api.getMyDonations();
+        if (!cancelled) {
+          setMyDonations(rows);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          toast.error(getErrorMessage(error, "Unable to load donated books"));
+        }
+      } finally {
+        if (!cancelled) {
+          setDonationsLoading(false);
+        }
+      }
+    };
+
+    loadDonations();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
+
   const digitalBooks = React.useMemo(() => {
     return books.filter(isDigitalBook);
   }, [books]);
@@ -320,6 +370,22 @@ function DashboardPageContent() {
     } catch (error) {
       setFavorites(previous);
       toast.error(getErrorMessage(error, "Unable to update favorites"));
+    }
+  };
+
+  const removeDonation = async (donation: DonationRecord) => {
+    const id = String(donation.id);
+    setRemovingDonationId(id);
+    try {
+      await api.deleteDonation(donation.id);
+      setMyDonations((current) =>
+        current.filter((item) => String(item.id) !== id),
+      );
+      toast.success("Donated book removed");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Unable to remove donated book"));
+    } finally {
+      setRemovingDonationId(null);
     }
   };
 
@@ -429,6 +495,15 @@ function DashboardPageContent() {
                   className="border-border/50 bg-card transition-all hover:shadow-lg"
                 >
                   <CardContent className="space-y-3 p-4">
+                    <div className="relative h-36 overflow-hidden rounded-lg bg-muted">
+                      <Image
+                        src={toCoverUrl(book.coverUrl)}
+                        alt={book.title}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, 320px"
+                      />
+                    </div>
                     <Badge variant="secondary">Digital Books</Badge>
                     <h3 className="line-clamp-1 font-semibold text-foreground">
                       {book.title}
@@ -460,6 +535,116 @@ function DashboardPageContent() {
         ) : (
           <div className="rounded-2xl border border-border/50 bg-card p-6 text-sm text-muted-foreground">
             No digital books uploaded yet. Be the first to add one.
+          </div>
+        )}
+      </section>
+
+      <section>
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+              <Gift className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">
+                Donated Books
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Books you have donated and their approval status
+              </p>
+            </div>
+          </div>
+          <Button variant="outline" asChild>
+            <Link href="/donations">View All Donations</Link>
+          </Button>
+        </div>
+
+        {!isAuthenticated ? (
+          <div className="rounded-2xl border border-border/50 bg-card p-6 text-sm text-muted-foreground">
+            Login to see your donated books.
+          </div>
+        ) : donationsLoading ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <Card key={index} className="border-border/50 bg-card">
+                <CardContent className="space-y-3 p-4">
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-8 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : myDonations.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {myDonations.map((donation) => (
+              <Card key={donation.id} className="border-border/50 bg-card">
+                <CardContent className="space-y-4 p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h3 className="line-clamp-1 font-semibold text-foreground">
+                        {donation.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {donation.author}
+                      </p>
+                    </div>
+                    {donation.approved ? (
+                      <Badge className="border-emerald-500/20 bg-emerald-500/10 text-emerald-600">
+                        Approved
+                      </Badge>
+                    ) : (
+                      <Badge className="border-amber-500/20 bg-amber-500/10 text-amber-600">
+                        Pending
+                      </Badge>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    Copies donated: {donation.copies}
+                  </p>
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full text-destructive hover:text-destructive"
+                        disabled={removingDonationId === String(donation.id)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        {removingDonationId === String(donation.id)
+                          ? "Removing..."
+                          : "Remove"}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          Remove this donated book?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This removes {donation.title} from your donated books.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => removeDonation(donation)}
+                          className="bg-destructive hover:bg-destructive/90"
+                        >
+                          Remove
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-border/50 bg-card p-6 text-sm text-muted-foreground">
+            You have not donated any books yet.
           </div>
         )}
       </section>

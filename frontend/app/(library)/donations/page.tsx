@@ -3,7 +3,7 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Gift, Heart, User, BookOpen, ArrowRight } from "lucide-react";
+import { Gift, Heart, User, BookOpen, ArrowRight, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { api, getUploadUrl } from "@/lib/api";
 import { useProtectedPage } from "@/lib/route-guards";
@@ -14,8 +14,27 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
-function DonationCard({ donation }: { donation: DonationRecord }) {
+function DonationCard({
+  donation,
+  onRemove,
+  removing,
+}: {
+  donation: DonationRecord;
+  onRemove?: (donation: DonationRecord) => void;
+  removing?: boolean;
+}) {
   const [loaded, setLoaded] = React.useState(false);
   const imageUrl = getUploadUrl(donation.image1 || donation.image2 || null);
 
@@ -53,10 +72,56 @@ function DonationCard({ donation }: { donation: DonationRecord }) {
             <User className="h-3.5 w-3.5" />
             {donation.donorName || "Anonymous"}
           </span>
-          <span className="text-xs text-muted-foreground">
-            {toIsoDate(donation.createdAt)}
-          </span>
+          <div className="flex items-center gap-2">
+            {!donation.approved ? (
+              <Badge className="border-amber-500/20 bg-amber-500/10 text-amber-600">
+                Pending
+              </Badge>
+            ) : (
+              <Badge className="border-emerald-500/20 bg-emerald-500/10 text-emerald-600">
+                Approved
+              </Badge>
+            )}
+            <span className="text-xs text-muted-foreground">
+              {toIsoDate(donation.createdAt)}
+            </span>
+          </div>
         </div>
+
+        {onRemove ? (
+          <div className="mt-3 border-t border-border pt-3">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-destructive hover:text-destructive"
+                  disabled={removing}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {removing ? "Removing..." : "Remove Donation"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Remove this donation?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will remove {donation.title} from your donated books.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => onRemove(donation)}
+                    className="bg-destructive hover:bg-destructive/90"
+                  >
+                    Remove
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -70,6 +135,7 @@ export default function DonationsPage() {
   >([]);
   const [myDonations, setMyDonations] = React.useState<DonationRecord[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [removingId, setRemovingId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!allowed) {
@@ -109,6 +175,25 @@ export default function DonationsPage() {
   if (!allowed) {
     return <div className="py-8" />;
   }
+
+  const handleRemove = async (donation: DonationRecord) => {
+    const id = String(donation.id);
+    setRemovingId(id);
+    try {
+      await api.deleteDonation(donation.id);
+      setMyDonations((current) =>
+        current.filter((item) => String(item.id) !== id),
+      );
+      setCommunityDonations((current) =>
+        current.filter((item) => String(item.id) !== id),
+      );
+      toast.success("Donated book removed");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Unable to remove donated book"));
+    } finally {
+      setRemovingId(null);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -177,7 +262,12 @@ export default function DonationsPage() {
           {myDonations.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {myDonations.map((donation) => (
-                <DonationCard key={donation.id} donation={donation} />
+                <DonationCard
+                  key={donation.id}
+                  donation={donation}
+                  onRemove={handleRemove}
+                  removing={removingId === String(donation.id)}
+                />
               ))}
             </div>
           ) : (

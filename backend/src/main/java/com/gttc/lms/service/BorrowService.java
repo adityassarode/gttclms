@@ -15,6 +15,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +43,7 @@ public class BorrowService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = {"booksSearch", "bookById"}, allEntries = true)
     public BorrowResponse borrowBook(User user, UUID bookId) {
         validateUser(user);
         if (!user.isVerified()) {
@@ -73,6 +75,7 @@ public class BorrowService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = {"booksSearch", "bookById"}, allEntries = true)
     public BorrowResponse returnBook(User user, UUID borrowId) {
         validateUser(user);
         UUID userId = userIdentityBridgeService.resolveOperationalUserId(user);

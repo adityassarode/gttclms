@@ -86,6 +86,9 @@ public final class DtoMapper {
         response.setImage1(donation.getImage1());
         response.setImage2(donation.getImage2());
         response.setDonorName(null);
+        response.setApproved(donation.isApproved());
+        response.setApprovedBookId(donation.getApprovedBookId());
+        response.setApprovedAt(donation.getApprovedAt());
         response.setCreatedAt(donation.getCreatedAt());
         return response;
     }

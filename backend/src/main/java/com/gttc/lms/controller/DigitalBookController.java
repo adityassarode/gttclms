@@ -54,10 +54,11 @@ public class DigitalBookController {
             @RequestParam String author,
             @RequestParam(required = false) String description,
             @RequestParam(required = false) String pdfUrl,
-            @RequestParam(name = "pdfFile", required = false) MultipartFile pdfFile
+            @RequestParam(name = "pdfFile", required = false) MultipartFile pdfFile,
+            @RequestParam(name = "coverImage", required = false) MultipartFile coverImage
     ) {
         User user = currentUserResolver.resolve(principal, authentication);
-        return digitalBookService.addDigitalBook(user, title, author, description, pdfUrl, pdfFile);
+        return digitalBookService.addDigitalBook(user, title, author, description, pdfUrl, pdfFile, coverImage);
     }
 
     @DeleteMapping("/{id}")

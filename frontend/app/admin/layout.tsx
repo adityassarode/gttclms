@@ -154,14 +154,10 @@ export default function AdminLayout({
     const loadNotifications = async () => {
       try {
         const rows = await api.getAllDonations();
-        const now = Date.now();
-        const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
-        const recentCount = rows.filter(
-          (row) => now - new Date(row.createdAt).getTime() <= twoDaysMs,
-        ).length;
+        const pendingCount = rows.filter((row) => !row.approved).length;
 
         if (!cancelled) {
-          setNotificationCount(recentCount);
+          setNotificationCount(pendingCount);
         }
       } catch {
         if (!cancelled) {
@@ -190,7 +186,7 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="flex min-h-dvh bg-background">
+    <div className="flex min-h-dvh overflow-x-hidden bg-background">
       {/* Desktop Sidebar */}
       <aside className="hidden w-64 flex-shrink-0 border-r border-border bg-card lg:block">
         <SidebarContent user={user || undefined} />
@@ -208,7 +204,7 @@ export default function AdminLayout({
       </Sheet>
 
       {/* Main Content */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         {/* Top Bar */}
         <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-xl">
           <div className="flex h-16 items-center justify-between gap-3 px-3 sm:gap-4 sm:px-4 lg:px-8">
@@ -298,8 +294,8 @@ export default function AdminLayout({
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto">
-          <div className="mx-auto max-w-7xl px-3 py-5 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
+        <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
+          <div className="mx-auto w-full min-w-0 max-w-7xl px-3 py-5 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
             {children}
           </div>
         </main>

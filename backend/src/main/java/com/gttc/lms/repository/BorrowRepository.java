@@ -9,5 +9,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface BorrowRepository extends JpaRepository<Borrow, UUID> {
     long countByUserIdAndStatus(UUID userId, BorrowStatus status);
 
+    long countByBook_Id(UUID bookId);
+
+    long countByBook_IdAndStatus(UUID bookId, BorrowStatus status);
+
     List<Borrow> findByUserIdOrderByBorrowedAtDesc(UUID userId);
 }

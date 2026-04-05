@@ -17,7 +17,11 @@ import com.gttc.lms.exception.ApiException;
 import com.gttc.lms.model.Donation;
 import com.gttc.lms.model.User;
 import com.gttc.lms.model.enums.UserStatus;
+import com.gttc.lms.repository.BookRepository;
+import com.gttc.lms.repository.BorrowRepository;
 import com.gttc.lms.repository.DonationRepository;
+import com.gttc.lms.repository.FavoriteRepository;
+import com.gttc.lms.repository.ReservationRepository;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -38,6 +42,18 @@ class DonationServiceValidationTest {
     private DonationRepository donationRepository;
 
     @Mock
+    private BookRepository bookRepository;
+
+    @Mock
+    private BorrowRepository borrowRepository;
+
+    @Mock
+    private ReservationRepository reservationRepository;
+
+    @Mock
+    private FavoriteRepository favoriteRepository;
+
+    @Mock
     private EmailService emailService;
 
     @Mock
@@ -52,6 +68,10 @@ class DonationServiceValidationTest {
     void setUp() {
         donationService = new DonationService(
                 donationRepository,
+            bookRepository,
+            borrowRepository,
+            reservationRepository,
+            favoriteRepository,
                 emailService,
                 userIdentityBridgeService,
                 uploadDir.toString()

@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AdminService {
@@ -26,6 +27,7 @@ public class AdminService {
         this.reservationRepository = reservationRepository;
     }
 
+    @Transactional(readOnly = true)
     public AnalyticsResponse getAnalytics() {
         List<Borrow> borrows = borrowRepository.findAll();
         List<Reservation> reservations = reservationRepository.findAll();
@@ -40,7 +42,15 @@ public class AdminService {
 
     private List<AnalyticsResponse.MetricPoint> topBorrowedBooks(List<Borrow> borrows) {
         Map<String, Long> counts = borrows.stream()
-                .collect(Collectors.groupingBy(b -> b.getBook().getTitle(), Collectors.counting()));
+                .collect(Collectors.groupingBy(
+                        b -> {
+                            if (b.getBook() == null || b.getBook().getTitle() == null || b.getBook().getTitle().isBlank()) {
+                                return "Unknown Book";
+                            }
+                            return b.getBook().getTitle();
+                        },
+                        Collectors.counting()
+                ));
         if (counts.isEmpty()) {
             return List.of(
                 new AnalyticsResponse.MetricPoint("The Psychology of Money", 6),
@@ -58,7 +68,15 @@ public class AdminService {
 
     private List<AnalyticsResponse.MetricPoint> categoryPopularity(List<Borrow> borrows) {
         Map<String, Long> counts = borrows.stream()
-                .collect(Collectors.groupingBy(b -> b.getBook().getCategory(), Collectors.counting()));
+                .collect(Collectors.groupingBy(
+                        b -> {
+                            if (b.getBook() == null || b.getBook().getCategory() == null || b.getBook().getCategory().isBlank()) {
+                                return "Uncategorized";
+                            }
+                            return b.getBook().getCategory();
+                        },
+                        Collectors.counting()
+                ));
         if (counts.isEmpty()) {
             return List.of(
                 new AnalyticsResponse.MetricPoint("Business", 8),
@@ -82,6 +100,9 @@ public class AdminService {
             counts.put(day, 0L);
         }
         for (Instant instant : instants) {
+            if (instant == null) {
+                continue;
+            }
             LocalDate day = instant.atZone(ZoneId.systemDefault()).toLocalDate();
             if (counts.containsKey(day)) {
                 counts.put(day, counts.get(day) + 1);

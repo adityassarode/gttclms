@@ -13,6 +13,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -38,6 +39,7 @@ public class ReservationService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = {"booksSearch", "bookById"}, allEntries = true)
     public ReservationResponse reserveBook(User user, UUID bookId) {
         validateUser(user);
         if (!user.isVerified()) {
@@ -79,6 +81,7 @@ public class ReservationService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = {"booksSearch", "bookById"}, allEntries = true)
     public ReservationResponse cancelReservation(User user, UUID reservationId) {
         validateUser(user);
         UUID userId = userIdentityBridgeService.resolveOperationalUserId(user);
@@ -98,6 +101,7 @@ public class ReservationService {
 
     @Scheduled(fixedDelay = 60000)
     @Transactional
+    @CacheEvict(cacheNames = {"booksSearch", "bookById"}, allEntries = true)
     public void expireReservations() {
         List<Reservation> expired = reservationRepository
                 .findByStatusAndExpiresAtBefore(ReservationStatus.ACTIVE, Instant.now());

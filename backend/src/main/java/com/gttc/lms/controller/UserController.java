@@ -71,15 +71,28 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     public UserResponse ban(@Valid @RequestBody BanUserRequest request) {
         User user = null;
-        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+
+        if (request.getId() != null) {
+            user = userRepository.findById(request.getId()).orElse(null);
+        }
+
+        if (user == null && request.getEmail() != null && !request.getEmail().isBlank()) {
             user = userRepository.findByEmail(request.getEmail()).orElse(null);
         }
+
         if (user == null && request.getRegisterNumber() != null && !request.getRegisterNumber().isBlank()) {
-            user = userRepository.findByRegisterNumber(request.getRegisterNumber()).orElse(null);
+            List<User> matches = userRepository.findAllByRegisterNumberIgnoreCase(request.getRegisterNumber().trim());
+            if (matches.size() > 1) {
+                throw new ApiException(HttpStatus.BAD_REQUEST,
+                        "Multiple users found for this register number. Please ban by user ID.");
+            }
+            user = matches.stream().findFirst().orElse(null);
         }
+
         if (user == null) {
             throw new ApiException(HttpStatus.NOT_FOUND, "User not found");
         }
+
         user.setStatus(UserStatus.BANNED);
         userRepository.save(user);
         return toUserResponse(user);

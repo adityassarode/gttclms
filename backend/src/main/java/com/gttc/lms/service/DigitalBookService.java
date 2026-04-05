@@ -32,6 +32,7 @@ public class DigitalBookService {
     private static final Logger logger = LoggerFactory.getLogger(DigitalBookService.class);
     private static final String DIGITAL_BOOKS_CATEGORY = "Digital Books";
     private static final long MAX_PDF_BYTES = 2L * 1024L * 1024L;
+    private static final long MAX_IMAGE_BYTES = 2L * 1024L * 1024L;
     private static final long MAX_DIGITAL_BOOKS_PER_USER = 2L;
 
     private final BookRepository bookRepository;
@@ -74,7 +75,8 @@ public class DigitalBookService {
             String author,
             String description,
             String pdfUrl,
-            MultipartFile pdfFile
+            MultipartFile pdfFile,
+            MultipartFile coverImage
     ) {
         validateUser(user);
 
@@ -106,6 +108,7 @@ public class DigitalBookService {
         String resolvedPdfUrl = hasPdfFile
                 ? storePdf(pdfFile)
                 : validateAndNormalizePdfLink(normalizedPdfUrl);
+        String resolvedCoverUrl = storeCoverImage(coverImage);
 
         Book book = new Book();
         book.setTitle(normalizedTitle);
@@ -113,7 +116,7 @@ public class DigitalBookService {
         book.setDescription(normalizedDescription);
         book.setCategory(DIGITAL_BOOKS_CATEGORY);
         book.setKeywords("digital,pdf");
-        book.setCoverUrl(null);
+        book.setCoverUrl(resolvedCoverUrl);
         book.setCopiesTotal(1);
         book.setCopiesAvailable(1);
         book.setFeatured(false);
@@ -144,7 +147,34 @@ public class DigitalBookService {
         }
 
         deleteStoredPdfIfLocal(book.getPdfUrl());
+        deleteStoredImageIfLocal(book.getCoverUrl());
         bookRepository.delete(book);
+    }
+
+    private String storeCoverImage(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return null;
+        }
+
+        validateImageFile(file);
+
+        try {
+            Path imagesDir = uploadDir.resolve("digital-images").normalize();
+            Files.createDirectories(imagesDir);
+
+            String original = sanitizeFilename(file.getOriginalFilename());
+            String filename = Instant.now().toEpochMilli() + "-" + UUID.randomUUID() + "-" + original;
+            Path destination = imagesDir.resolve(filename).normalize();
+
+            if (!destination.startsWith(imagesDir)) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid cover image file name");
+            }
+
+            Files.copy(file.getInputStream(), destination, StandardCopyOption.REPLACE_EXISTING);
+            return "/uploads/digital-images/" + filename;
+        } catch (IOException ex) {
+            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store cover image");
+        }
     }
 
     private String storePdf(MultipartFile file) {
@@ -193,6 +223,26 @@ public class DigitalBookService {
         }
     }
 
+    private void deleteStoredImageIfLocal(String imageUrl) {
+        String value = trimToNull(imageUrl);
+        if (value == null || !value.startsWith("/uploads/digital-images/")) {
+            return;
+        }
+
+        String relative = value.substring("/uploads/".length());
+        Path candidate = uploadDir.resolve(relative).normalize();
+
+        if (!candidate.startsWith(uploadDir)) {
+            return;
+        }
+
+        try {
+            Files.deleteIfExists(candidate);
+        } catch (IOException ex) {
+            logger.warn("Unable to delete stored image {}", candidate, ex);
+        }
+    }
+
     private String validateAndNormalizePdfLink(String pdfUrl) {
         try {
             URI uri = new URI(pdfUrl.trim());
@@ -227,6 +277,27 @@ public class DigitalBookService {
 
         if (!extensionIsPdf && !contentTypeIsPdf) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Only PDF files are allowed");
+        }
+    }
+
+    private void validateImageFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return;
+        }
+
+        if (file.getSize() > MAX_IMAGE_BYTES) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Cover image size must be 2MB or less");
+        }
+
+        String filename = trimToNull(file.getOriginalFilename());
+        String contentType = trimToNull(file.getContentType());
+
+        boolean extensionLooksImage = filename != null && filename.toLowerCase(Locale.ROOT)
+                .matches(".*\\.(jpg|jpeg|png|webp|gif)$");
+        boolean contentTypeLooksImage = contentType != null && contentType.toLowerCase(Locale.ROOT).startsWith("image/");
+
+        if (!extensionLooksImage && !contentTypeLooksImage) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Only image files are allowed for cover image");
         }
     }
 

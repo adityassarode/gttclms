@@ -49,6 +49,9 @@ export interface DonationRecord {
   image1?: string | null;
   image2?: string | null;
   donorName?: string | null;
+  approved: boolean;
+  approvedBookId?: string | null;
+  approvedAt?: string | null;
   createdAt: string;
 }
 
@@ -128,6 +131,7 @@ export interface DigitalBookCreatePayload {
   description?: string;
   pdfUrl?: string;
   pdfFile?: File;
+  coverImage?: File;
 }
 
 export interface BorrowRequestPayload {
@@ -147,6 +151,7 @@ export interface VerifyStudentPayload {
 }
 
 export interface BanUserPayload {
+  id?: ApiId;
   email?: string;
   registerNumber?: string;
 }

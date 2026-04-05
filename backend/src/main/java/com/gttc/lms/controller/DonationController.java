@@ -5,9 +5,12 @@ import com.gttc.lms.model.User;
 import com.gttc.lms.service.CurrentUserResolver;
 import com.gttc.lms.service.DonationService;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -49,5 +52,25 @@ public class DonationController {
     @GetMapping
     public List<DonationResponse> all() {
         return donationService.listAll();
+    }
+
+    @PostMapping("/{id}/approve")
+    public DonationResponse approve(
+            @AuthenticationPrincipal Object principal,
+            Authentication authentication,
+            @PathVariable UUID id
+    ) {
+        User user = currentUserResolver.resolve(principal, authentication);
+        return donationService.approveDonation(user, id);
+    }
+
+    @DeleteMapping("/{id}")
+    public void deleteMine(
+            @AuthenticationPrincipal Object principal,
+            Authentication authentication,
+            @PathVariable UUID id
+    ) {
+        User user = currentUserResolver.resolve(principal, authentication);
+        donationService.deleteMine(user, id);
     }
 }

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   FileText,
@@ -11,12 +12,13 @@ import {
   ExternalLink,
   Trash2,
   BookOpen,
+  ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api, getUploadUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import type { Book } from "@/lib/types";
-import { getErrorMessage } from "@/lib/ui-helpers";
+import { getErrorMessage, toCoverUrl } from "@/lib/ui-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const MAX_DIGITAL_BOOKS_PER_USER = 2;
 const MAX_PDF_BYTES = 2 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 
 function isDigitalBook(book: Book) {
   return (
@@ -51,11 +54,32 @@ function DigitalBookCard({
   onRemove?: (book: Book) => void;
   removing?: boolean;
 }) {
+  const [coverLoaded, setCoverLoaded] = React.useState(false);
   const pdfHref = resolvePdfHref(book);
+  const hasCover = Boolean(book.coverUrl);
 
   return (
     <Card className="border-border/50 bg-card transition-all hover:shadow-lg hover:shadow-primary/5">
       <CardContent className="space-y-4 p-4">
+        {hasCover ? (
+          <div className="relative h-36 overflow-hidden rounded-lg bg-muted">
+            {!coverLoaded ? <Skeleton className="absolute inset-0" /> : null}
+            <Image
+              src={toCoverUrl(book.coverUrl)}
+              alt={book.title}
+              fill
+              className="object-cover"
+              onLoad={() => setCoverLoaded(true)}
+              sizes="(max-width: 768px) 100vw, 320px"
+            />
+          </div>
+        ) : (
+          <div className="flex h-36 items-center justify-center rounded-lg border border-dashed border-border bg-muted/40 text-muted-foreground">
+            <ImageIcon className="mr-2 h-4 w-4" />
+            No cover image
+          </div>
+        )}
+
         <div className="flex items-start justify-between gap-2">
           <div>
             <h3 className="line-clamp-1 font-semibold text-foreground">
@@ -114,6 +138,7 @@ export default function DigitalBooksPage() {
   const [description, setDescription] = React.useState("");
   const [pdfUrl, setPdfUrl] = React.useState("");
   const [pdfFile, setPdfFile] = React.useState<File | null>(null);
+  const [coverImage, setCoverImage] = React.useState<File | null>(null);
 
   const [allBooks, setAllBooks] = React.useState<Book[]>([]);
   const [myBooks, setMyBooks] = React.useState<Book[]>([]);
@@ -122,6 +147,7 @@ export default function DigitalBooksPage() {
   const [removingId, setRemovingId] = React.useState<string | null>(null);
 
   const fileRef = React.useRef<HTMLInputElement | null>(null);
+  const coverImageRef = React.useRef<HTMLInputElement | null>(null);
 
   React.useEffect(() => {
     if (!isReady) {
@@ -192,6 +218,11 @@ export default function DigitalBooksPage() {
       return;
     }
 
+    if (coverImage && coverImage.size > MAX_IMAGE_BYTES) {
+      toast.error("Cover image size must be 2MB or less");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const created = await api.createDigitalBook({
@@ -200,6 +231,7 @@ export default function DigitalBooksPage() {
         description,
         pdfUrl: pdfUrl.trim() || undefined,
         pdfFile: pdfFile || undefined,
+        coverImage: coverImage || undefined,
       });
 
       setAllBooks((current) => [created, ...current]);
@@ -210,8 +242,12 @@ export default function DigitalBooksPage() {
       setDescription("");
       setPdfUrl("");
       setPdfFile(null);
+      setCoverImage(null);
       if (fileRef.current) {
         fileRef.current.value = "";
+      }
+      if (coverImageRef.current) {
+        coverImageRef.current.value = "";
       }
 
       toast.success("Digital book added successfully");
@@ -334,6 +370,25 @@ export default function DigitalBooksPage() {
                 <p className="text-xs text-muted-foreground">
                   Provide either a PDF link or upload a PDF file. PDF must be
                   2MB or less. Max 2 digital books per user.
+                </p>
+              </div>
+
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="coverImage" className="flex items-center gap-2">
+                  <ImageIcon className="h-4 w-4" />
+                  Cover Image (optional)
+                </Label>
+                <Input
+                  id="coverImage"
+                  ref={coverImageRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) =>
+                    setCoverImage(event.target.files?.[0] || null)
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Upload JPG, PNG, WEBP, or GIF up to 2MB.
                 </p>
               </div>
             </div>

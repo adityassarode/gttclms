@@ -175,10 +175,8 @@ export default function BookDetailPage() {
     setIsSubmitting(true);
     try {
       await api.borrowBook(book.id);
-      setBook({
-        ...book,
-        copiesAvailable: Math.max(0, book.copiesAvailable - 1),
-      });
+      const updated = await api.getBook(book.id);
+      setBook(updated);
       toast.success("Book borrowed successfully");
     } catch (error) {
       toast.error(getErrorMessage(error, "Unable to borrow this book"));
@@ -205,10 +203,8 @@ export default function BookDetailPage() {
     setIsSubmitting(true);
     try {
       await api.reserveBook(book.id);
-      setBook({
-        ...book,
-        copiesAvailable: Math.max(0, book.copiesAvailable - 1),
-      });
+      const updated = await api.getBook(book.id);
+      setBook(updated);
       toast.success("Book reserved successfully");
     } catch (error) {
       toast.error(getErrorMessage(error, "Unable to reserve this book"));

@@ -120,7 +120,7 @@ public class UserIdentityBridgeService {
             return null;
         }
 
-        return userRepository.findByRegisterNumber(registerNumber)
+        return userRepository.findFirstByRegisterNumberIgnoreCaseOrderByIdAsc(registerNumber)
                 .map(User::getEmail)
                 .map(this::trimToNull)
                 .orElse(null);
