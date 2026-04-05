@@ -1,6 +1,0 @@
-[build]
-  command = "rm -rf frontend/node_modules frontend/package-lock.json && npm install --prefix frontend && npm run build --prefix frontend"
-  publish = "frontend/.next"
-
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
