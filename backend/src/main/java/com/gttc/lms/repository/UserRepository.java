@@ -17,7 +17,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
         @Query(value = """
                         SELECT COALESCE(
-                            au.avatar_url,
                             u.raw_user_meta_data ->> 'avatar_url',
                             u.raw_user_meta_data ->> 'picture'
                         )
@@ -32,7 +31,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
                         SELECT
                             au.id AS userId,
                             COALESCE(
-                                au.avatar_url,
                                 u.raw_user_meta_data ->> 'avatar_url',
                                 u.raw_user_meta_data ->> 'picture'
                             ) AS avatarUrl

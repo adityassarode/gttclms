@@ -11,6 +11,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.time.Instant;
 
 @Entity
@@ -47,7 +48,7 @@ public class User {
     @Column(name = "provider_id")
     private String providerId;
 
-    @Column(name = "avatar_url")
+    @Transient
     private String avatarUrl;
 
     @Enumerated(EnumType.STRING)
