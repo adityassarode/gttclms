@@ -405,9 +405,20 @@ function DashboardPageContent() {
           Feed your curiosity. Build your mind. One page today. A stronger you
           tomorrow.
         </p>
-        <p className="mt-2 text-sm text-muted-foreground">
-           This platform is fully designed and developed by Aditya Sarode.
-        </p>
+        <p className="mt-2 text-sm font-semibold">
+  <span className="bg-gradient-to-r from-emerald-600 via-teal-500 to-green-400 bg-clip-text text-transparent animate-pulse">
+    ✦ This platform is fully designed and developed by{" "}
+  </span>
+  <span className="relative inline-block">
+    <span className="bg-gradient-to-r from-green-400 via-emerald-500 to-teal-600 bg-clip-text text-transparent font-bold animate-pulse">
+      Aditya Sarode
+    </span>
+    <span className="absolute -bottom-0.5 left-0 h-[2px] w-full bg-gradient-to-r from-green-400 via-emerald-500 to-teal-600 rounded-full animate-pulse" />
+  </span>
+  <span className="bg-gradient-to-r from-emerald-600 via-teal-500 to-green-400 bg-clip-text text-transparent animate-pulse">
+    {" "}✦
+  </span>
+</p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
