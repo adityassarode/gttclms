@@ -13,7 +13,7 @@
 
 <br/>
 
-### 💫 *"The best way to predict the future is to build it."*
+### 💫 *"The future is not something you wait for. You build it, line by line. While others scroll, I build."*
 
 <br/>
 
@@ -24,7 +24,7 @@
 
 
 
-![](https://img.shields.io/badge/Built%20to-Impress%20%E2%9C%A8-00C896?style=for-the-badge)
+![](https://img.shields.io/badge/Crafted%20with-Precision%20%F0%9F%8E%AF-00C896?style=for-the-badge)
 
 
 
@@ -33,11 +33,7 @@
 
 
 
-
-
-
-
-
+<br/>
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=120&section=footer" width="100%"/>
 
