@@ -405,20 +405,98 @@ function DashboardPageContent() {
           Feed your curiosity. Build your mind. One page today. A stronger you
           tomorrow.
         </p>
-        <p className="mt-2 text-sm font-semibold">
-  <span className="bg-gradient-to-r from-emerald-600 via-teal-500 to-green-400 bg-clip-text text-transparent animate-pulse">
-    ✦ This platform is fully designed and developed by{" "}
-  </span>
-  <span className="relative inline-block">
-    <span className="bg-gradient-to-r from-green-400 via-emerald-500 to-teal-600 bg-clip-text text-transparent font-bold animate-pulse">
-      Aditya Sarode
-    </span>
-    <span className="absolute -bottom-0.5 left-0 h-[2px] w-full bg-gradient-to-r from-green-400 via-emerald-500 to-teal-600 rounded-full animate-pulse" />
-  </span>
-  <span className="bg-gradient-to-r from-emerald-600 via-teal-500 to-green-400 bg-clip-text text-transparent animate-pulse">
-    {" "}✦
-  </span>
-</p>
+        {/* Credit Signature */}  
+<div  
+  style={{  
+    marginTop: "20px",  
+    paddingTop: "16px",  
+    borderTop: "1px solid #dcfce7",  
+    display: "flex",  
+    alignItems: "flex-start",  
+    gap: "10px",  
+    animation: "fadeUp 0.5s ease forwards",  
+  }}  
+>  
+  {/* Dot */}  
+  <div  
+    style={{  
+      width: "6px", height: "6px",  
+      background: "#4ade80",  
+      borderRadius: "50%",  
+      boxShadow: "0 0 0 3px #4ade8033",  
+      animation: "dotPop 0.4s cubic-bezier(.22,1,.36,1) forwards",  
+      flexShrink: 0,  
+      marginTop: "4px",  
+    }}  
+  />  
+  
+  <div>  
+    {/* Label */}  
+    <p  
+      style={{  
+        fontFamily: "'DM Sans', sans-serif",  
+        fontSize: "11px",  
+        fontWeight: 500,  
+        letterSpacing: "1.5px",  
+        textTransform: "uppercase",  
+        color: "#6b7280",  
+        margin: 0,  
+        animation: "labelIn 0.6s ease forwards",  
+      }}  
+    >  
+      Designed &amp; Developed by  
+    </p>  
+  
+    {/* Typewriter Name */}  
+    <div style={{ marginTop: "4px", display: "inline-block" }}>  
+      <span  
+        style={{  
+          fontFamily: "'Playfair Display', Georgia, serif",  
+          fontStyle: "italic",  
+          fontWeight: 700,  
+          fontSize: "22px",  
+          color: "#166534",  
+          lineHeight: 1,  
+        }}  
+      >  
+        {typed}  
+      </span>  
+      {!done && (  
+        <span  
+          style={{  
+            display: "inline-block",  
+            width: "2px", height: "20px",  
+            background: "#16a34a",  
+            marginLeft: "2px",  
+            verticalAlign: "middle",  
+            borderRadius: "1px",  
+            animation: "blink 0.75s step-end infinite",  
+          }}  
+        />  
+      )}  
+    </div>  
+  
+    {/* Ink Underline */}  
+    {showLine && (  
+      <div style={{ marginTop: "2px" }}>  
+        <svg width="148" height="10" viewBox="0 0 148 10" style={{ overflow: "visible", display: "block" }}>  
+          <path  
+            d="M2 7 Q20 2 40 6 Q70 10 100 5 Q124 1 146 6"  
+            stroke="#22c55e"  
+            strokeWidth="2"  
+            fill="none"  
+            strokeLinecap="round"  
+            style={{  
+              strokeDasharray: 120,  
+              strokeDashoffset: 120,  
+              animation: "inkDraw 0.7s cubic-bezier(.22,1,.36,1) forwards",  
+            }}  
+          />  
+        </svg>  
+      </div>  
+    )}  
+  </div>  
+</div>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
