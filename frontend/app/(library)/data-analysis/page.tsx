@@ -495,9 +495,28 @@ export default function DataAnalysisPage() {
     DataAnalysisStoredFile[]
   >([]);
   const [isFilesLoading, setIsFilesLoading] = React.useState(false);
+  const [activeStoredFileId, setActiveStoredFileId] = React.useState<
+    string | null
+  >(null);
+  const [fullscreenGraphKey, setFullscreenGraphKey] = React.useState<
+    string | null
+  >(null);
   const [datasetUrl, setDatasetUrl] = React.useState("");
   const [isImportingUrl, setIsImportingUrl] = React.useState(false);
   const [previewColumnQuery, setPreviewColumnQuery] = React.useState("");
+
+  React.useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        setFullscreenGraphKey(null);
+      }
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
 
   const columnTypes = React.useMemo(
     () => getColumnTypes(rows, columns),
@@ -646,13 +665,15 @@ export default function DataAnalysisPage() {
     }
 
     const graphs: QuickGraph[] = [];
-    const seedColumns = numericColumns.slice(0, 5);
+    const seedColumns = numericColumns.slice(0, 10);
 
     seedColumns.forEach((column, index) => {
       const baseColor = CHART_COLORS[index % CHART_COLORS.length];
       const avgColor = CHART_COLORS[(index + 2) % CHART_COLORS.length];
       const histColor = CHART_COLORS[(index + 4) % CHART_COLORS.length];
       const cumColor = CHART_COLORS[(index + 6) % CHART_COLORS.length];
+      const altColor = CHART_COLORS[(index + 1) % CHART_COLORS.length];
+      const altHistColor = CHART_COLORS[(index + 3) % CHART_COLORS.length];
 
       graphs.push({
         key: `${column}-trend`,
@@ -663,19 +684,35 @@ export default function DataAnalysisPage() {
       });
 
       graphs.push({
-        key: `${column}-moving-average`,
-        title: `${column} moving average`,
+        key: `${column}-moving-average-short`,
+        title: `${column} moving average (short)`,
         kind: "line",
-        data: movingAverageSeries(rows, column, 3 + index * 2, 70),
+        data: movingAverageSeries(rows, column, 3 + (index % 3), 70),
         color: avgColor,
       });
 
       graphs.push({
-        key: `${column}-histogram`,
-        title: `${column} histogram`,
+        key: `${column}-moving-average-long`,
+        title: `${column} moving average (long)`,
+        kind: "line",
+        data: movingAverageSeries(rows, column, 7 + (index % 5), 70),
+        color: altColor,
+      });
+
+      graphs.push({
+        key: `${column}-histogram-coarse`,
+        title: `${column} histogram (coarse)`,
         kind: "bar",
-        data: histogramSeriesForColumn(rows, column, 6 + index),
+        data: histogramSeriesForColumn(rows, column, 6 + (index % 4)),
         color: histColor,
+      });
+
+      graphs.push({
+        key: `${column}-histogram-fine`,
+        title: `${column} histogram (fine)`,
+        kind: "bar",
+        data: histogramSeriesForColumn(rows, column, 10 + (index % 5)),
+        color: altHistColor,
       });
 
       graphs.push({
@@ -687,12 +724,14 @@ export default function DataAnalysisPage() {
       });
     });
 
+    let result = graphs.filter((graph) => graph.data.length > 0);
+
     const primaryColumn = seedColumns[0];
     let filler = 0;
-    while (graphs.length < 20) {
+    while (primaryColumn && result.length < 50) {
       if (filler % 2 === 0) {
-        const window = 2 + (filler % 6);
-        graphs.push({
+        const window = 2 + (filler % 10);
+        result.push({
           key: `${primaryColumn}-smoothed-${filler}`,
           title: `${primaryColumn} smooth w=${window}`,
           kind: "line",
@@ -700,8 +739,8 @@ export default function DataAnalysisPage() {
           color: CHART_COLORS[filler % CHART_COLORS.length],
         });
       } else {
-        const bins = 5 + (filler % 8);
-        graphs.push({
+        const bins = 5 + (filler % 15);
+        result.push({
           key: `${primaryColumn}-bins-${filler}`,
           title: `${primaryColumn} histogram ${bins} bins`,
           kind: "bar",
@@ -712,7 +751,8 @@ export default function DataAnalysisPage() {
       filler += 1;
     }
 
-    return graphs.slice(0, 25);
+    result = result.filter((graph) => graph.data.length > 0);
+    return result.slice(0, 50);
   }, [rows, numericColumns]);
 
   const cleanedRows = React.useMemo(() => {
@@ -984,8 +1024,8 @@ export default function DataAnalysisPage() {
       if (uploaded.emailSent) {
         toast.success("Cleaned file emailed and stored for 30 minutes");
       } else {
-        toast.warning(
-          "File stored for 30 minutes, but email could not be delivered. Use the download list below.",
+        toast.success(
+          "File stored for 30 minutes. If email is delayed, use the stored files list below.",
         );
       }
       await reloadStoredFiles();
@@ -1005,6 +1045,87 @@ export default function DataAnalysisPage() {
       toast.success("Stored file removed");
     } catch (error) {
       toast.error(getErrorMessage(error, "Unable to remove stored file"));
+    }
+  };
+
+  const handleDownloadStoredFile = async (item: DataAnalysisStoredFile) => {
+    const id = String(item.id);
+    setActiveStoredFileId(id);
+    try {
+      const downloaded = await api.downloadProtectedFile(item.downloadUrl);
+      const fileName = downloaded.fileName || item.cleanedFileName;
+      triggerDownload(downloaded.blob, fileName);
+      toast.success(`Downloaded ${fileName}`);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Unable to download stored file"));
+    } finally {
+      setActiveStoredFileId(null);
+    }
+  };
+
+  const handleViewStoredOutput = async (item: DataAnalysisStoredFile) => {
+    const id = String(item.id);
+    const format = (item.fileFormat || "").toLowerCase();
+    if (!format || !["csv", "xlsx", "xls"].includes(format)) {
+      toast.error("Preview is supported for CSV and Excel files only");
+      return;
+    }
+
+    setActiveStoredFileId(id);
+    try {
+      const downloaded = await api.downloadProtectedFile(item.downloadUrl);
+      const fileName = downloaded.fileName || item.cleanedFileName;
+      const file = new File([downloaded.blob], fileName, {
+        type:
+          downloaded.contentType ||
+          downloaded.blob.type ||
+          "application/octet-stream",
+      });
+
+      await loadDatasetFile(file, "Loaded stored output preview");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Unable to preview stored output"));
+    } finally {
+      setActiveStoredFileId(null);
+    }
+  };
+
+  const handleExpandGraph = async (
+    event: React.MouseEvent<HTMLDivElement>,
+    graphKey: string,
+  ) => {
+    type FullscreenTarget = HTMLDivElement & {
+      webkitRequestFullscreen?: () => Promise<void> | void;
+      msRequestFullscreen?: () => Promise<void> | void;
+    };
+
+    const target = event.currentTarget as FullscreenTarget;
+    const requestFullscreen =
+      target.requestFullscreen ||
+      target.webkitRequestFullscreen ||
+      target.msRequestFullscreen;
+
+    if (!requestFullscreen) {
+      toast.error("Fullscreen is not supported in this browser");
+      return;
+    }
+
+    try {
+      setFullscreenGraphKey(graphKey);
+      const outcome = requestFullscreen.call(target);
+      if (
+        outcome &&
+        typeof outcome === "object" &&
+        "then" in outcome &&
+        typeof outcome.then === "function"
+      ) {
+        await outcome;
+      }
+    } catch (error) {
+      setFullscreenGraphKey((current) =>
+        current === graphKey ? null : current,
+      );
+      toast.error(getErrorMessage(error, "Unable to open fullscreen graph"));
     }
   };
 
@@ -1249,198 +1370,6 @@ export default function DataAnalysisPage() {
             </Card>
           ) : null}
 
-          <div className="grid gap-5 lg:grid-cols-2">
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle className="text-base">
-                  Missing Values by Column (Bar Chart)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[260px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={missingByColumn}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="column"
-                        interval={0}
-                        angle={-25}
-                        textAnchor="end"
-                        height={70}
-                      />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="missing" fill="#0f766e" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle className="text-base">
-                  Row Trend (Line Chart)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[260px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={lineChartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="index" />
-                      <YAxis />
-                      <Tooltip />
-                      <Line
-                        type="monotone"
-                        dataKey="value"
-                        stroke="#1d4ed8"
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle className="text-base">
-                  Distribution (Histogram)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[260px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={histogramData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="label" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="count" fill="#ea580c" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle className="text-base">
-                  Column Type Split (Pie Chart)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[260px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={typePieData}
-                        dataKey="value"
-                        nameKey="name"
-                        outerRadius={86}
-                      >
-                        {typePieData.map((entry, index) => (
-                          <Cell
-                            key={`${entry.name}-${index}`}
-                            fill={CHART_COLORS[index % CHART_COLORS.length]}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/50 lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="text-base">Correlation Heatmap</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {numericColumns.length > 1 ? (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-[560px] border-collapse">
-                      <thead>
-                        <tr>
-                          <th className="px-2 py-2 text-left text-xs text-muted-foreground" />
-                          {numericColumns.slice(0, 8).map((column) => (
-                            <th
-                              key={column}
-                              className="px-2 py-2 text-left text-xs text-muted-foreground"
-                            >
-                              {column}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {numericColumns
-                          .slice(0, 8)
-                          .map((rowColumn, rowIndex) => (
-                            <tr key={rowColumn}>
-                              <td className="px-2 py-2 text-xs text-muted-foreground">
-                                {rowColumn}
-                              </td>
-                              {numericColumns
-                                .slice(0, 8)
-                                .map((colColumn, colIndex) => {
-                                  const value =
-                                    correlationMatrix[rowIndex]?.[colIndex] ||
-                                    0;
-                                  return (
-                                    <td
-                                      key={`${rowColumn}-${colColumn}`}
-                                      className="h-10 w-20 px-2 py-2 text-center text-xs font-medium text-white"
-                                      style={{
-                                        backgroundColor: heatColor(value),
-                                      }}
-                                      title={`${rowColumn} vs ${colColumn}: ${value.toFixed(3)}`}
-                                    >
-                                      {value.toFixed(2)}
-                                    </td>
-                                  );
-                                })}
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Add at least two numeric columns to generate a correlation
-                    heatmap.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            {topCategoryData.length > 0 ? (
-              <Card className="border-border/50 lg:col-span-2">
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    Top Category Values (Additional Visualization)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[260px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={topCategoryData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="label" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="count" fill="#16a34a" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : null}
-          </div>
-
           <Card className="border-border/50">
             <CardHeader>
               <CardTitle className="text-lg">Data Cleaning</CardTitle>
@@ -1618,25 +1547,39 @@ export default function DataAnalysisPage() {
           <Card className="border-border/50">
             <CardHeader>
               <CardTitle className="text-lg">
-                Advanced Graph Gallery ({quickGraphGallery.length} graphs)
+                Graph Gallery ({quickGraphGallery.length}/50)
               </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Double-click any graph card to view it in fullscreen. Press Esc
+                to exit.
+              </p>
             </CardHeader>
             <CardContent>
               {quickGraphGallery.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  Add at least one numeric column to generate advanced graphs.
+                  Add at least one numeric column to generate 50 graphs.
                 </p>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {quickGraphGallery.map((graph) => (
                     <div
                       key={graph.key}
-                      className="rounded-xl border border-border/40 p-3"
+                      className="rounded-xl border border-border/40 p-3 cursor-zoom-in bg-card/60"
+                      onDoubleClick={(event) =>
+                        handleExpandGraph(event, graph.key)
+                      }
+                      title="Double-click to expand fullscreen"
                     >
                       <p className="mb-2 text-sm font-medium text-foreground">
                         {graph.title}
                       </p>
-                      <div className="h-[170px]">
+                      <div
+                        className={
+                          fullscreenGraphKey === graph.key
+                            ? "h-[85vh]"
+                            : "h-[170px]"
+                        }
+                      >
                         <ResponsiveContainer width="100%" height="100%">
                           {graph.kind === "bar" ? (
                             <BarChart data={graph.data}>
@@ -1676,7 +1619,12 @@ export default function DataAnalysisPage() {
           <CardTitle className="text-lg">
             Temporary Stored Cleaned Files (30 min)
           </CardTitle>
-          <Button variant="outline" size="sm" onClick={reloadStoredFiles}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={reloadStoredFiles}
+            disabled={isFilesLoading}
+          >
             <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
           </Button>
@@ -1700,9 +1648,15 @@ export default function DataAnalysisPage() {
               className="flex flex-col gap-3 rounded-lg border border-border/40 p-3 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
-                <p className="font-medium text-foreground">
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto p-0 text-left font-medium text-foreground"
+                  onClick={() => handleViewStoredOutput(item)}
+                  disabled={activeStoredFileId === String(item.id)}
+                >
                   {item.cleanedFileName}
-                </p>
+                </Button>
                 <p className="text-xs text-muted-foreground">
                   Original: {item.originalFileName} • Created:{" "}
                   {toIsoDate(item.createdAt)} • Expires:{" "}
@@ -1710,17 +1664,32 @@ export default function DataAnalysisPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline" asChild>
-                  <a href={item.downloadUrl} target="_blank" rel="noreferrer">
-                    <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" />
-                    Download
-                  </a>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleViewStoredOutput(item)}
+                  disabled={activeStoredFileId === String(item.id)}
+                >
+                  <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" />
+                  {activeStoredFileId === String(item.id)
+                    ? "Opening..."
+                    : "View Output"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleDownloadStoredFile(item)}
+                  disabled={activeStoredFileId === String(item.id)}
+                >
+                  <Download className="mr-1.5 h-3.5 w-3.5" />
+                  Download
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
                   className="text-destructive hover:text-destructive"
                   onClick={() => handleDeleteStoredFile(item.id)}
+                  disabled={activeStoredFileId === String(item.id)}
                 >
                   <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                   Delete

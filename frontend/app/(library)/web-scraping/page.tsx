@@ -55,6 +55,17 @@ function downloadTableAsCsv(table: WebScrapeTableItem, fileName: string) {
   URL.revokeObjectURL(url);
 }
 
+function triggerBlobDownload(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
 function trimToNull(value: string) {
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
@@ -63,7 +74,8 @@ function trimToNull(value: string) {
 function baseNameFromUrl(inputUrl: string) {
   try {
     const parsed = new URL(inputUrl);
-    const host = parsed.hostname.replace(/^www\./, "").split(".")[0] || "scraped-data";
+    const host =
+      parsed.hostname.replace(/^www\./, "").split(".")[0] || "scraped-data";
     return host;
   } catch {
     return "scraped-data";
@@ -80,7 +92,8 @@ function toSafeBaseName(value: string) {
 }
 
 function buildSuggestedName(result: WebScrapeResponse) {
-  const preferred = trimToNull(result.title ?? "") || baseNameFromUrl(result.url);
+  const preferred =
+    trimToNull(result.title ?? "") || baseNameFromUrl(result.url);
   return toSafeBaseName(preferred);
 }
 
@@ -96,7 +109,8 @@ export default function WebScrapingPage() {
 
   const [result, setResult] = React.useState<WebScrapeResponse | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
-  const [isExporting, setIsExporting] = React.useState(false);
+  const [isEmailing, setIsEmailing] = React.useState(false);
+  const [isDownloading, setIsDownloading] = React.useState(false);
   const [exportFormat, setExportFormat] = React.useState<"pdf" | "docx">("pdf");
   const [exportFileName, setExportFileName] = React.useState("scraped-data");
 
@@ -147,50 +161,60 @@ export default function WebScrapingPage() {
     }
   };
 
-  const handleExportAndEmail = async () => {
+  const createExportFile = async () => {
     if (!result) {
-      toast.error("Scrape a website first");
-      return;
+      throw new Error("Scrape a website first");
     }
 
     const safeFileName = trimToNull(exportFileName);
     if (!safeFileName) {
-      toast.error("Enter a filename");
-      return;
+      throw new Error("Enter a filename");
     }
 
-    setIsExporting(true);
-    try {
-      const stored = await api.exportScrapedFile({
-        fileName: safeFileName,
-        format: exportFormat,
-        url: result.url,
-        title: result.title,
-        headings: result.headings,
-        paragraphs: result.paragraphs,
-        links: result.links,
-        tables: result.tables,
-      });
+    return api.exportScrapedFile({
+      fileName: safeFileName,
+      format: exportFormat,
+      url: result.url,
+      title: result.title,
+      headings: result.headings,
+      paragraphs: result.paragraphs,
+      links: result.links,
+      tables: result.tables,
+    });
+  };
 
-      const anchor = document.createElement("a");
-      anchor.href = stored.downloadUrl;
-      anchor.target = "_blank";
-      anchor.rel = "noreferrer";
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
+  const handleDownloadExport = async () => {
+    setIsDownloading(true);
+    try {
+      const stored = await createExportFile();
+      const downloaded = await api.downloadProtectedFile(stored.downloadUrl);
+      const finalName = downloaded.fileName || stored.cleanedFileName;
+      triggerBlobDownload(downloaded.blob, finalName);
+
+      toast.success(`Downloaded ${finalName}`);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Unable to download exported file"));
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleEmailExport = async () => {
+    setIsEmailing(true);
+    try {
+      const stored = await createExportFile();
 
       if (stored.emailSent) {
-        toast.success("Download started and email sent. Link expires in 30 minutes.");
+        toast.success("Email sent. File link is active for 30 minutes.");
       } else {
-        toast.warning(
-          "Download started. Email could not be sent, but your file link is active for 30 minutes.",
+        toast.success(
+          "File prepared successfully. If email is delayed, use the Download button.",
         );
       }
     } catch (error) {
-      toast.error(getErrorMessage(error, "Unable to export scraped data"));
+      toast.error(getErrorMessage(error, "Unable to email exported file"));
     } finally {
-      setIsExporting(false);
+      setIsEmailing(false);
     }
   };
 
@@ -300,7 +324,9 @@ export default function WebScrapingPage() {
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">
                   Headings
                 </p>
-                <p className="mt-1 text-2xl font-semibold">{stats.headingCount}</p>
+                <p className="mt-1 text-2xl font-semibold">
+                  {stats.headingCount}
+                </p>
               </CardContent>
             </Card>
             <Card className="border-border/50">
@@ -308,7 +334,9 @@ export default function WebScrapingPage() {
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">
                   Paragraphs
                 </p>
-                <p className="mt-1 text-2xl font-semibold">{stats.paragraphCount}</p>
+                <p className="mt-1 text-2xl font-semibold">
+                  {stats.paragraphCount}
+                </p>
               </CardContent>
             </Card>
             <Card className="border-border/50">
@@ -324,7 +352,9 @@ export default function WebScrapingPage() {
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">
                   Tables
                 </p>
-                <p className="mt-1 text-2xl font-semibold">{stats.tableCount}</p>
+                <p className="mt-1 text-2xl font-semibold">
+                  {stats.tableCount}
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -333,7 +363,7 @@ export default function WebScrapingPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Mail className="h-5 w-5" />
-                Export and Email (30 min expiry)
+                Export Options (30 min expiry)
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -377,15 +407,28 @@ export default function WebScrapingPage() {
               <div className="flex flex-wrap items-center gap-3">
                 <Button
                   type="button"
-                  onClick={handleExportAndEmail}
-                  disabled={isExporting}
+                  onClick={handleDownloadExport}
+                  disabled={isDownloading}
+                  variant="outline"
                 >
-                  {isExporting ? (
+                  {isDownloading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
                     <Download className="mr-2 h-4 w-4" />
                   )}
-                  Download + Email {exportFormat.toUpperCase()}
+                  Download {exportFormat.toUpperCase()}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleEmailExport}
+                  disabled={isEmailing}
+                >
+                  {isEmailing ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Mail className="mr-2 h-4 w-4" />
+                  )}
+                  Email {exportFormat.toUpperCase()}
                 </Button>
                 <p className="text-xs text-muted-foreground">
                   Generated file link auto-expires in 30 minutes.
@@ -451,7 +494,8 @@ export default function WebScrapingPage() {
                 ))}
                 {result.paragraphs.length > 25 ? (
                   <p className="text-xs text-muted-foreground">
-                    Showing first 25 paragraphs out of {result.paragraphs.length}.
+                    Showing first 25 paragraphs out of{" "}
+                    {result.paragraphs.length}.
                   </p>
                 ) : null}
               </CardContent>

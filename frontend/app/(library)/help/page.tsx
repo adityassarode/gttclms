@@ -67,6 +67,11 @@ const faqs = [
     answer:
       "Please report any damaged books immediately at the library counter or through the Help Center. Do not attempt to repair books yourself as this may cause further damage.",
   },
+  {
+    question: "How do I expand a data analysis graph to full screen?",
+    answer:
+      "In the Data Analysis Graph Gallery, double-click any graph card to open it in full screen. Press Esc to return to the normal view.",
+  },
 ];
 
 const quickLinks = [

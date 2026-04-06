@@ -428,6 +428,117 @@ async function request<T>(
   }
 }
 
+function parseContentDispositionFileName(dispositionHeader: string | null) {
+  if (!dispositionHeader) {
+    return null;
+  }
+
+  const utf8Match = dispositionHeader.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1]);
+    } catch {
+      return utf8Match[1];
+    }
+  }
+
+  const quotedMatch = dispositionHeader.match(/filename="([^"]+)"/i);
+  if (quotedMatch?.[1]) {
+    return quotedMatch[1];
+  }
+
+  const unquotedMatch = dispositionHeader.match(/filename=([^;]+)/i);
+  if (unquotedMatch?.[1]) {
+    return unquotedMatch[1].trim();
+  }
+
+  return null;
+}
+
+async function requestBlobWithAuth(
+  path: string,
+  fallbackMessage = "Unable to download file",
+  timeoutMs = REQUEST_TIMEOUT_MS,
+) {
+  const send = async (activeToken: string | null) => {
+    const headers = new Headers();
+    if (activeToken) {
+      headers.set("Authorization", `Bearer ${activeToken}`);
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      return await fetch(buildUrl(path), {
+        method: "GET",
+        headers,
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  };
+
+  let token = await getActiveAuthToken();
+  if (!token) {
+    const { data, error } = await supabase.auth.refreshSession();
+    token = error ? null : (data.session?.access_token ?? null);
+    cachedAuthToken = token;
+    cachedAuthTokenAt = Date.now();
+  }
+
+  if (!token) {
+    throw new Error("Authentication required");
+  }
+
+  let response = await send(token);
+
+  if (response.status === 401) {
+    try {
+      const { data, error } = await supabase.auth.refreshSession();
+      const refreshedToken = error
+        ? null
+        : (data.session?.access_token ?? null);
+      cachedAuthToken = refreshedToken;
+      cachedAuthTokenAt = Date.now();
+      if (refreshedToken) {
+        response = await send(refreshedToken);
+      }
+    } catch {
+      cachedAuthToken = null;
+      cachedAuthTokenAt = Date.now();
+    }
+  }
+
+  if (!response.ok) {
+    const raw = await response.text();
+    let payload: unknown = undefined;
+    if (raw) {
+      try {
+        payload = JSON.parse(raw);
+      } catch {
+        payload = raw;
+      }
+    }
+
+    throw new Error(
+      extractApiMessage(
+        payload,
+        `${fallbackMessage}${response.status ? ` (${response.status})` : ""}`,
+      ),
+    );
+  }
+
+  return {
+    blob: await response.blob(),
+    fileName: parseContentDispositionFileName(
+      response.headers.get("content-disposition"),
+    ),
+    contentType: response.headers.get("content-type"),
+  };
+}
+
 function normalizeBookPayload(payload: BookUpsertPayload) {
   return {
     title: payload.title.trim(),
@@ -888,6 +999,10 @@ export const api = {
       },
       "Unable to export scraped data",
     );
+  },
+
+  downloadProtectedFile(downloadUrl: string) {
+    return requestBlobWithAuth(downloadUrl, "Unable to download file");
   },
 
   getFavorites() {
