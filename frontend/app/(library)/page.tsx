@@ -18,18 +18,25 @@ import {
   Filter,
   History,
   Trash2,
+  BookMarked,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api, getUploadUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useRequireLoginAction } from "@/lib/route-guards";
-import type { ApiId, Book, DonationRecord } from "@/lib/types";
+import type {
+  ApiId,
+  Book,
+  DonationRecord,
+  QuestionPaper,
+  StudyNote,
+} from "@/lib/types";
 import { getErrorMessage, toCoverUrl, toIsoDate } from "@/lib/ui-helpers";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -72,6 +79,10 @@ function getPdfHref(book: Book) {
     return null;
   }
   return getUploadUrl(book.pdfUrl) || book.pdfUrl;
+}
+
+function getResourcePdfHref(path: string) {
+  return getUploadUrl(path) || path;
 }
 
 function FeaturedBook({ book }: { book: Book }) {
@@ -204,6 +215,11 @@ function DashboardPageContent() {
   const [removingDonationId, setRemovingDonationId] = React.useState<
     string | null
   >(null);
+  const [latestQuestionPapers, setLatestQuestionPapers] = React.useState<
+    QuestionPaper[]
+  >([]);
+  const [latestNotes, setLatestNotes] = React.useState<StudyNote[]>([]);
+  const [resourcesLoading, setResourcesLoading] = React.useState(false);
 
   React.useEffect(() => {
     setSearch(queryInUrl);
@@ -310,6 +326,40 @@ function DashboardPageContent() {
       cancelled = true;
     };
   }, [isAuthenticated]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    const loadResources = async () => {
+      setResourcesLoading(true);
+      try {
+        const [papers, notes] = await Promise.all([
+          api.getQuestionPapers(),
+          api.getStudyNotes(),
+        ]);
+
+        if (!cancelled) {
+          setLatestQuestionPapers(papers.slice(0, 4));
+          setLatestNotes(notes.slice(0, 4));
+        }
+      } catch (error) {
+        if (!cancelled) {
+          toast.error(
+            getErrorMessage(error, "Unable to load latest academic resources"),
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setResourcesLoading(false);
+        }
+      }
+    };
+
+    loadResources();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const digitalBooks = React.useMemo(() => {
     return books.filter(isDigitalBook);
@@ -429,6 +479,152 @@ function DashboardPageContent() {
               ))}
             </SelectContent>
           </Select>
+        </div>
+      </section>
+
+      <section>
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+              <FileText className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">
+                Latest Academic Resources
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Freshly added question papers and notes
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card className="border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <FileText className="h-4 w-4 text-primary" />
+                Latest Question Papers
+              </CardTitle>
+              <Button size="sm" variant="outline" asChild>
+                <Link href="/question-papers">View All</Link>
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {resourcesLoading
+                ? Array.from({ length: 3 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="space-y-2 rounded-lg border border-border/40 p-3"
+                    >
+                      <Skeleton className="h-4 w-4/5" />
+                      <Skeleton className="h-3 w-2/3" />
+                    </div>
+                  ))
+                : null}
+
+              {!resourcesLoading && latestQuestionPapers.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No question papers added yet.
+                </p>
+              ) : null}
+
+              {!resourcesLoading
+                ? latestQuestionPapers.map((paper) => (
+                    <div
+                      key={paper.id}
+                      className="flex flex-col gap-3 rounded-lg border border-border/40 p-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div>
+                        <p className="font-medium text-foreground">
+                          {paper.subjectName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {paper.department} • Sem {paper.semester} •{" "}
+                          {paper.questionPaperYear}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Added {toIsoDate(paper.createdAt)}
+                        </p>
+                      </div>
+                      <Button size="sm" variant="outline" asChild>
+                        <a
+                          href={getResourcePdfHref(paper.pdfUrl)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                          Open
+                        </a>
+                      </Button>
+                    </div>
+                  ))
+                : null}
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <BookMarked className="h-4 w-4 text-primary" />
+                Latest Notes
+              </CardTitle>
+              <Button size="sm" variant="outline" asChild>
+                <Link href="/notes">View All</Link>
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {resourcesLoading
+                ? Array.from({ length: 3 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="space-y-2 rounded-lg border border-border/40 p-3"
+                    >
+                      <Skeleton className="h-4 w-4/5" />
+                      <Skeleton className="h-3 w-2/3" />
+                    </div>
+                  ))
+                : null}
+
+              {!resourcesLoading && latestNotes.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No notes added yet.
+                </p>
+              ) : null}
+
+              {!resourcesLoading
+                ? latestNotes.map((note) => (
+                    <div
+                      key={note.id}
+                      className="flex flex-col gap-3 rounded-lg border border-border/40 p-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div>
+                        <p className="font-medium text-foreground">
+                          {note.subjectName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {note.department} • Sem {note.semester} • Units{" "}
+                          {note.unitNumbers}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Added {toIsoDate(note.createdAt)}
+                        </p>
+                      </div>
+                      <Button size="sm" variant="outline" asChild>
+                        <a
+                          href={getResourcePdfHref(note.pdfUrl)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                          Open
+                        </a>
+                      </Button>
+                    </div>
+                  ))
+                : null}
+            </CardContent>
+          </Card>
         </div>
       </section>
 

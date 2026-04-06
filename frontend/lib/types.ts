@@ -163,3 +163,93 @@ export interface StudentRequestPayload {
   semester: string;
   year: string;
 }
+
+export interface QuestionPaper {
+  id: ApiId;
+  subjectName: string;
+  department: string;
+  semester: string;
+  academicYear: string;
+  questionPaperYear: string;
+  pdfUrl: string;
+  createdAt: string;
+}
+
+export interface StudyNote {
+  id: ApiId;
+  subjectName: string;
+  department: string;
+  semester: string;
+  academicYear: string;
+  unitNumbers: string;
+  pdfUrl: string;
+  createdAt: string;
+}
+
+export interface QuestionPaperCreatePayload {
+  subjectName: string;
+  department: string;
+  semester: string;
+  academicYear: string;
+  questionPaperYear: string;
+  pdfUrl?: string;
+  pdfFile?: File;
+}
+
+export type QuestionPaperUpdatePayload = QuestionPaperCreatePayload;
+
+export interface StudyNoteCreatePayload {
+  subjectName: string;
+  department: string;
+  semester: string;
+  academicYear: string;
+  unitNumbers: string;
+  pdfUrl?: string;
+  pdfFile?: File;
+}
+
+export type StudyNoteUpdatePayload = StudyNoteCreatePayload;
+
+export interface DataAnalysisStoredFile {
+  id: ApiId;
+  originalFileName: string;
+  cleanedFileName: string;
+  fileFormat: string;
+  downloadUrl: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface DataAnalysisCleanedFilePayload {
+  file: File;
+  originalFileName?: string;
+  format?: "csv" | "xlsx";
+}
+
+export interface WebScrapeRequestPayload {
+  url: string;
+  includeTitle?: boolean;
+  includeHeadings?: boolean;
+  includeParagraphs?: boolean;
+  includeLinks?: boolean;
+  includeTables?: boolean;
+}
+
+export interface WebScrapeLinkItem {
+  text: string;
+  url: string;
+}
+
+export interface WebScrapeTableItem {
+  headers: string[];
+  rows: string[][];
+}
+
+export interface WebScrapeResponse {
+  url: string;
+  title?: string | null;
+  headings: string[];
+  paragraphs: string[];
+  links: WebScrapeLinkItem[];
+  tables: WebScrapeTableItem[];
+}

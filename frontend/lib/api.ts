@@ -4,20 +4,30 @@ import type {
   AuthResponse,
   BanUserPayload,
   Book,
-  DigitalBookCreatePayload,
   BookUpsertPayload,
+  DataAnalysisCleanedFilePayload,
+  DataAnalysisStoredFile,
+  DigitalBookCreatePayload,
   BorrowRecord,
   BorrowRequestPayload,
   DonationRecord,
   GoogleLoginPayload,
   LoginPayload,
+  QuestionPaper,
+  QuestionPaperCreatePayload,
+  QuestionPaperUpdatePayload,
   RegisterPayload,
   ReservationRecord,
   ReserveRequestPayload,
+  StudyNote,
+  StudyNoteCreatePayload,
+  StudyNoteUpdatePayload,
   StudentRequestPayload,
   StudentResponse,
   User,
   VerifyStudentPayload,
+  WebScrapeRequestPayload,
+  WebScrapeResponse,
 } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 
@@ -486,6 +496,65 @@ function normalizeDigitalBookPayload(payload: DigitalBookCreatePayload) {
   return formData;
 }
 
+function normalizeQuestionPaperPayload(
+  payload: QuestionPaperCreatePayload | QuestionPaperUpdatePayload,
+) {
+  const formData = new FormData();
+  formData.append("subjectName", payload.subjectName.trim());
+  formData.append("department", payload.department.trim());
+  formData.append("semester", payload.semester.trim());
+  formData.append("academicYear", payload.academicYear.trim());
+  formData.append("questionPaperYear", payload.questionPaperYear.trim());
+
+  if (payload.pdfUrl?.trim()) {
+    formData.append("pdfUrl", payload.pdfUrl.trim());
+  }
+
+  if (payload.pdfFile) {
+    formData.append("pdfFile", payload.pdfFile);
+  }
+
+  return formData;
+}
+
+function normalizeStudyNotePayload(
+  payload: StudyNoteCreatePayload | StudyNoteUpdatePayload,
+) {
+  const formData = new FormData();
+  formData.append("subjectName", payload.subjectName.trim());
+  formData.append("department", payload.department.trim());
+  formData.append("semester", payload.semester.trim());
+  formData.append("academicYear", payload.academicYear.trim());
+  formData.append("unitNumbers", payload.unitNumbers.trim());
+
+  if (payload.pdfUrl?.trim()) {
+    formData.append("pdfUrl", payload.pdfUrl.trim());
+  }
+
+  if (payload.pdfFile) {
+    formData.append("pdfFile", payload.pdfFile);
+  }
+
+  return formData;
+}
+
+function normalizeDataAnalysisCleanedPayload(
+  payload: DataAnalysisCleanedFilePayload,
+) {
+  const formData = new FormData();
+  formData.append("file", payload.file);
+
+  if (payload.originalFileName?.trim()) {
+    formData.append("originalFileName", payload.originalFileName.trim());
+  }
+
+  if (payload.format) {
+    formData.append("format", payload.format);
+  }
+
+  return formData;
+}
+
 export const api = {
   register(payload: RegisterPayload) {
     return request<AuthResponse>(
@@ -667,6 +736,145 @@ export const api = {
         method: "DELETE",
       },
       "Unable to remove digital book",
+    );
+  },
+
+  getQuestionPapers(params?: {
+    subjectName?: string;
+    department?: string;
+    semester?: string;
+    academicYear?: string;
+    questionPaperYear?: string;
+  }) {
+    return request<QuestionPaper[]>(
+      "/api/question-papers",
+      {},
+      "Unable to load question papers",
+      params,
+      false,
+    );
+  },
+
+  createQuestionPaper(payload: QuestionPaperCreatePayload) {
+    return request<QuestionPaper>(
+      "/api/question-papers",
+      {
+        method: "POST",
+        body: normalizeQuestionPaperPayload(payload),
+      },
+      "Unable to add question paper",
+    );
+  },
+
+  updateQuestionPaper(
+    id: string | number,
+    payload: QuestionPaperUpdatePayload,
+  ) {
+    return request<QuestionPaper>(
+      `/api/question-papers/${id}`,
+      {
+        method: "PUT",
+        body: normalizeQuestionPaperPayload(payload),
+      },
+      "Unable to update question paper",
+    );
+  },
+
+  async deleteQuestionPaper(id: string | number) {
+    await request<void>(
+      `/api/question-papers/${id}`,
+      {
+        method: "DELETE",
+      },
+      "Unable to delete question paper",
+    );
+  },
+
+  getStudyNotes(params?: {
+    subjectName?: string;
+    department?: string;
+    semester?: string;
+    academicYear?: string;
+    unitNumber?: string;
+  }) {
+    return request<StudyNote[]>(
+      "/api/notes",
+      {},
+      "Unable to load notes",
+      params,
+      false,
+    );
+  },
+
+  createStudyNote(payload: StudyNoteCreatePayload) {
+    return request<StudyNote>(
+      "/api/notes",
+      {
+        method: "POST",
+        body: normalizeStudyNotePayload(payload),
+      },
+      "Unable to add note",
+    );
+  },
+
+  updateStudyNote(id: string | number, payload: StudyNoteUpdatePayload) {
+    return request<StudyNote>(
+      `/api/notes/${id}`,
+      {
+        method: "PUT",
+        body: normalizeStudyNotePayload(payload),
+      },
+      "Unable to update note",
+    );
+  },
+
+  async deleteStudyNote(id: string | number) {
+    await request<void>(
+      `/api/notes/${id}`,
+      {
+        method: "DELETE",
+      },
+      "Unable to delete note",
+    );
+  },
+
+  uploadCleanedDataFile(payload: DataAnalysisCleanedFilePayload) {
+    return request<DataAnalysisStoredFile>(
+      "/api/data-analysis/cleaned-files",
+      {
+        method: "POST",
+        body: normalizeDataAnalysisCleanedPayload(payload),
+      },
+      "Unable to upload cleaned file",
+    );
+  },
+
+  getMyCleanedDataFiles() {
+    return request<DataAnalysisStoredFile[]>(
+      "/api/data-analysis/cleaned-files/me",
+      {},
+      "Unable to load cleaned files",
+    );
+  },
+
+  async deleteCleanedDataFile(fileId: string | number) {
+    await request<void>(
+      `/api/data-analysis/cleaned-files/${fileId}`,
+      {
+        method: "DELETE",
+      },
+      "Unable to delete cleaned file",
+    );
+  },
+
+  scrapeWebsite(payload: WebScrapeRequestPayload) {
+    return request<WebScrapeResponse>(
+      "/api/web-scrape/extract",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      "Unable to scrape website",
     );
   },
 

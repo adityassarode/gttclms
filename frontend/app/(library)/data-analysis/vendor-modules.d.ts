@@ -1,3 +1,2 @@
-declare module "*.css";
 declare module "recharts";
 declare module "xlsx";

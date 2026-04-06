@@ -1,6 +1,7 @@
 import "./globals.css";
 import * as React from "react";
 import { AuthProvider } from "@/lib/auth-context";
+import { BackgroundCustomizer } from "@/components/background-customizer";
 import { Toaster } from "sonner";
 
 export const metadata = {
@@ -17,6 +18,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <AuthProvider>{children}</AuthProvider>
+        <BackgroundCustomizer />
         <Toaster richColors position="top-right" />
       </body>
     </html>
