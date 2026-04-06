@@ -961,12 +961,37 @@ export const api = {
     );
   },
 
-  getMyCleanedDataFiles() {
-    return request<DataAnalysisStoredFile[]>(
+  async getMyCleanedDataFiles() {
+    const payload = await request<
+      | DataAnalysisStoredFile[]
+      | {
+          data?: DataAnalysisStoredFile[];
+          items?: DataAnalysisStoredFile[];
+          files?: DataAnalysisStoredFile[];
+        }
+    >(
       "/api/data-analysis/cleaned-files/me",
       {},
       "Unable to load cleaned files",
     );
+
+    if (Array.isArray(payload)) {
+      return payload;
+    }
+
+    if (Array.isArray(payload?.data)) {
+      return payload.data;
+    }
+
+    if (Array.isArray(payload?.items)) {
+      return payload.items;
+    }
+
+    if (Array.isArray(payload?.files)) {
+      return payload.files;
+    }
+
+    return [];
   },
 
   async deleteCleanedDataFile(fileId: string | number) {
