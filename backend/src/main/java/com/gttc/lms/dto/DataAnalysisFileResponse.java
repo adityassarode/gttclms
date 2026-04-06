@@ -9,6 +9,7 @@ public class DataAnalysisFileResponse {
     private String cleanedFileName;
     private String fileFormat;
     private String downloadUrl;
+    private boolean emailSent;
     private Instant createdAt;
     private Instant expiresAt;
 
@@ -50,6 +51,14 @@ public class DataAnalysisFileResponse {
 
     public void setDownloadUrl(String downloadUrl) {
         this.downloadUrl = downloadUrl;
+    }
+
+    public boolean isEmailSent() {
+        return emailSent;
+    }
+
+    public void setEmailSent(boolean emailSent) {
+        this.emailSent = emailSent;
     }
 
     public Instant getCreatedAt() {

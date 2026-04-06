@@ -26,6 +26,7 @@ import type {
   StudentResponse,
   User,
   VerifyStudentPayload,
+  WebScrapeExportPayload,
   WebScrapeRequestPayload,
   WebScrapeResponse,
 } from "@/lib/types";
@@ -875,6 +876,17 @@ export const api = {
         body: JSON.stringify(payload),
       },
       "Unable to scrape website",
+    );
+  },
+
+  exportScrapedFile(payload: WebScrapeExportPayload) {
+    return request<DataAnalysisStoredFile>(
+      "/api/web-scrape/export",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      "Unable to export scraped data",
     );
   },
 

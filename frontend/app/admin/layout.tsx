@@ -79,7 +79,7 @@ function SidebarContent({
   const pathname = usePathname();
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex min-h-full flex-col">
       {/* Logo */}
       <div className="px-6 py-6 border-b border-border">
         <Image
@@ -94,7 +94,7 @@ function SidebarContent({
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-3 py-4">
         <p className="mb-3 px-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Management
         </p>
@@ -202,7 +202,10 @@ export default function AdminLayout({
 
       {/* Mobile Sidebar */}
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-        <SheetContent side="left" className="w-72 p-0">
+        <SheetContent
+          side="left"
+          className="h-dvh w-72 overflow-y-auto overflow-x-hidden p-0"
+        >
           <SheetTitle className="sr-only">Admin Navigation</SheetTitle>
           <SidebarContent
             user={user || undefined}

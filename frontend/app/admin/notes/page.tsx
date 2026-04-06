@@ -21,6 +21,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const MAX_PDF_BYTES = 2 * 1024 * 1024;
 
@@ -39,6 +49,9 @@ export default function AdminNotesPage() {
   const [isUpdating, setIsUpdating] = React.useState(false);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<StudyNote | null>(
+    null,
+  );
 
   const [subjectName, setSubjectName] = React.useState("");
   const [department, setDepartment] = React.useState("");
@@ -258,19 +271,20 @@ export default function AdminNotesPage() {
     }
   };
 
-  const handleDelete = async (note: StudyNote) => {
-    if (!window.confirm(`Delete note \"${note.subjectName}\"?`)) {
+  const handleDeleteConfirmed = async () => {
+    if (!deleteTarget) {
       return;
     }
 
-    const id = String(note.id);
+    const id = String(deleteTarget.id);
     setDeletingId(id);
     try {
-      await api.deleteStudyNote(note.id);
+      await api.deleteStudyNote(deleteTarget.id);
       setNotes((current) => current.filter((item) => String(item.id) !== id));
       if (editingId === id) {
         resetEditForm();
       }
+      setDeleteTarget(null);
       toast.success("Note deleted");
     } catch (error) {
       toast.error(getErrorMessage(error, "Unable to delete note"));
@@ -597,7 +611,7 @@ export default function AdminNotesPage() {
                           variant="ghost"
                           className="text-destructive hover:text-destructive"
                           disabled={deletingId === String(note.id)}
-                          onClick={() => handleDelete(note)}
+                          onClick={() => setDeleteTarget(note)}
                         >
                           {deletingId === String(note.id) ? (
                             <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -622,6 +636,36 @@ export default function AdminNotesPage() {
           ) : null}
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && !deletingId) {
+            setDeleteTarget(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete note?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove {deleteTarget?.subjectName}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={Boolean(deletingId)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirmed}
+              disabled={Boolean(deletingId)}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {deletingId ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

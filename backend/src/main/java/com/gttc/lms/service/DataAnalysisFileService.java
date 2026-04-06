@@ -17,6 +17,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,6 +33,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class DataAnalysisFileService {
     private static final Duration RETENTION_WINDOW = Duration.ofMinutes(30);
     private static final long MAX_CLEANED_FILE_BYTES = 50L * 1024L * 1024L;
+    private static final long MAX_EMAIL_ATTACHMENT_BYTES = 8L * 1024L * 1024L;
     private static final DateTimeFormatter EXPIRES_AT_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss 'UTC'").withZone(ZoneOffset.UTC);
 
@@ -53,6 +55,58 @@ public class DataAnalysisFileService {
     }
 
     public record DownloadPayload(Resource resource, String fileName, String fileFormat) {
+    }
+
+    private static final class GeneratedMultipartFile implements MultipartFile {
+        private final String originalFilename;
+        private final byte[] bytes;
+        private final String contentType;
+
+        private GeneratedMultipartFile(String originalFilename, byte[] bytes, String contentType) {
+            this.originalFilename = originalFilename;
+            this.bytes = bytes;
+            this.contentType = contentType;
+        }
+
+        @Override
+        public String getName() {
+            return "file";
+        }
+
+        @Override
+        public String getOriginalFilename() {
+            return originalFilename;
+        }
+
+        @Override
+        public String getContentType() {
+            return contentType;
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return bytes.length == 0;
+        }
+
+        @Override
+        public long getSize() {
+            return bytes.length;
+        }
+
+        @Override
+        public byte[] getBytes() {
+            return bytes;
+        }
+
+        @Override
+        public java.io.InputStream getInputStream() {
+            return new java.io.ByteArrayInputStream(bytes);
+        }
+
+        @Override
+        public void transferTo(java.io.File dest) throws IOException {
+            Files.write(dest.toPath(), bytes);
+        }
     }
 
     @Transactional
@@ -103,12 +157,30 @@ public class DataAnalysisFileService {
             dataAnalysisFileRepository.save(row);
 
             String downloadUrl = buildDownloadUrl(requestBaseUrl, row.getId());
-            sendCleanedFileEmail(user, row, downloadUrl);
+            boolean emailSent = sendCleanedFileEmail(user, row, downloadUrl);
 
-            return toResponse(row, downloadUrl);
+            return toResponse(row, downloadUrl, emailSent);
         } catch (IOException ex) {
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store cleaned file");
         }
+    }
+
+    @Transactional
+    public DataAnalysisFileResponse storeGeneratedFile(
+            User user,
+            byte[] fileBytes,
+            String originalFileName,
+            String requestedFormat,
+            String requestBaseUrl
+    ) {
+        byte[] safeBytes = Objects.requireNonNullElse(fileBytes, new byte[0]);
+        MultipartFile multipartFile = new GeneratedMultipartFile(
+                originalFileName,
+                safeBytes,
+                contentTypeForFormat(requestedFormat)
+        );
+
+        return storeCleanedFile(user, multipartFile, originalFileName, requestedFormat, requestBaseUrl);
     }
 
     @Transactional
@@ -119,7 +191,7 @@ public class DataAnalysisFileService {
         UUID userId = userIdentityBridgeService.resolveOperationalUserId(user);
         return dataAnalysisFileRepository.findByUserIdAndExpiresAtAfterOrderByCreatedAtDesc(userId, Instant.now())
                 .stream()
-                .map(row -> toResponse(row, buildDownloadUrl(requestBaseUrl, row.getId())))
+                .map(row -> toResponse(row, buildDownloadUrl(requestBaseUrl, row.getId()), false))
                 .collect(Collectors.toList());
     }
 
@@ -186,13 +258,14 @@ public class DataAnalysisFileService {
         dataAnalysisFileRepository.deleteAll(expired);
     }
 
-    private DataAnalysisFileResponse toResponse(DataAnalysisFile row, String downloadUrl) {
+    private DataAnalysisFileResponse toResponse(DataAnalysisFile row, String downloadUrl, boolean emailSent) {
         DataAnalysisFileResponse response = new DataAnalysisFileResponse();
         response.setId(row.getId());
         response.setOriginalFileName(row.getOriginalFileName());
         response.setCleanedFileName(row.getCleanedFileName());
         response.setFileFormat(row.getFileFormat());
         response.setDownloadUrl(downloadUrl);
+        response.setEmailSent(emailSent);
         response.setCreatedAt(row.getCreatedAt());
         response.setExpiresAt(row.getExpiresAt());
         return response;
@@ -206,20 +279,20 @@ public class DataAnalysisFileService {
         return base.replaceAll("/+$", "") + "/api/data-analysis/cleaned-files/" + fileId + "/download";
     }
 
-    private void sendCleanedFileEmail(User user, DataAnalysisFile row, String downloadUrl) {
+    private boolean sendCleanedFileEmail(User user, DataAnalysisFile row, String downloadUrl) {
         String email = trimToNull(user.getEmail());
         if (email == null) {
-            return;
+            return false;
         }
 
         String expiresAt = row.getExpiresAt() == null
                 ? "in 30 minutes"
                 : EXPIRES_AT_FORMATTER.format(row.getExpiresAt());
 
-        String subject = "Your cleaned data file is ready";
+        String subject = "Your file is ready";
         String html = """
                 <p>Hello %s,</p>
-                <p>Your cleaned file <strong>%s</strong> is ready.</p>
+                <p>Your file <strong>%s</strong> is ready.</p>
                 <p>You can download it from <a href=\"%s\">this link</a>.</p>
                 <p>This file will be removed automatically at %s.</p>
                 <p>Thank you,<br/>GTTC LMS</p>
@@ -230,7 +303,41 @@ public class DataAnalysisFileService {
                 escapeHtml(expiresAt)
         );
 
-        emailService.sendHtml(email, subject, html);
+        byte[] attachmentBytes = loadEmailAttachmentBytes(row);
+        if (attachmentBytes != null && attachmentBytes.length > 0) {
+            return emailService.sendHtmlAndWait(
+                    email,
+                    subject,
+                    html,
+                    row.getCleanedFileName(),
+                    attachmentBytes
+            );
+        }
+
+        return emailService.sendHtmlAndWait(email, subject, html);
+    }
+
+    private byte[] loadEmailAttachmentBytes(DataAnalysisFile row) {
+        String storedPath = trimToNull(row.getStoredFilePath());
+        if (storedPath == null) {
+            return null;
+        }
+
+        try {
+            Path path = Paths.get(storedPath).toAbsolutePath().normalize();
+            if (!path.startsWith(uploadDir) || !Files.exists(path)) {
+                return null;
+            }
+
+            long size = Files.size(path);
+            if (size <= 0 || size > MAX_EMAIL_ATTACHMENT_BYTES) {
+                return null;
+            }
+
+            return Files.readAllBytes(path);
+        } catch (IOException ex) {
+            return null;
+        }
     }
 
     private void deleteStoredFile(String storedFilePath) {
@@ -254,17 +361,39 @@ public class DataAnalysisFileService {
         String fromRequest = trimToNull(requestedFormat);
         if (fromRequest != null) {
             String normalized = fromRequest.toLowerCase(Locale.ROOT);
-            if ("csv".equals(normalized) || "xlsx".equals(normalized)) {
+            if ("csv".equals(normalized)
+                    || "xlsx".equals(normalized)
+                    || "pdf".equals(normalized)
+                    || "docx".equals(normalized)) {
                 return normalized;
             }
         }
 
         String ext = extensionOf(fileName);
+        if ("pdf".equals(ext) || "docx".equals(ext)) {
+            return ext;
+        }
+
         if ("xlsx".equals(ext) || "xls".equals(ext)) {
             return "xlsx";
         }
 
         return "csv";
+    }
+
+    private String contentTypeForFormat(String requestedFormat) {
+        String format = trimToNull(requestedFormat);
+        if (format == null) {
+            return "application/octet-stream";
+        }
+
+        return switch (format.toLowerCase(Locale.ROOT)) {
+            case "pdf" -> "application/pdf";
+            case "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            case "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            case "csv" -> "text/csv";
+            default -> "application/octet-stream";
+        };
     }
 
     private String resolveOriginalName(String originalFileName, String uploadedFileName, String fileFormat) {

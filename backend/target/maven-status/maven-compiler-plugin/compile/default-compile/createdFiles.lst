@@ -14,6 +14,7 @@ com/gttc/lms/controller/DigitalBookController.class
 com/gttc/lms/repository/DataAnalysisFileRepository.class
 com/gttc/lms/service/DtoMapper.class
 com/gttc/lms/dto/StudentResponse.class
+com/gttc/lms/dto/WebScrapeExportRequest.class
 com/gttc/lms/config/SupabaseUserFilter.class
 com/gttc/lms/service/StudyNoteService.class
 com/gttc/lms/repository/UserProfileRecordRepository.class
@@ -36,6 +37,7 @@ com/gttc/lms/dto/BorrowResponse.class
 com/gttc/lms/repository/UserRepository.class
 com/gttc/lms/dto/BookResponse.class
 com/gttc/lms/service/StudentService.class
+com/gttc/lms/service/DataAnalysisFileService$GeneratedMultipartFile.class
 com/gttc/lms/dto/RegisterRequest.class
 com/gttc/lms/model/Book.class
 com/gttc/lms/model/Student.class
@@ -47,6 +49,7 @@ com/gttc/lms/dto/StudyNoteResponse.class
 com/gttc/lms/dto/ReserveRequest.class
 com/gttc/lms/controller/DataAnalysisController.class
 com/gttc/lms/config/SecurityConfig.class
+com/gttc/lms/service/WebScrapeExportService.class
 com/gttc/lms/controller/StudyNoteController.class
 com/gttc/lms/dto/WebScrapeRequest.class
 com/gttc/lms/model/StudyNote.class
@@ -89,6 +92,7 @@ com/gttc/lms/model/Donation.class
 com/gttc/lms/service/WebScrapeService.class
 com/gttc/lms/service/AuthService.class
 com/gttc/lms/controller/StatusController.class
+com/gttc/lms/service/WebScrapeExportService$PdfLine.class
 com/gttc/lms/service/DataAnalysisFileService$DownloadPayload.class
 com/gttc/lms/config/SupabaseIssuerAuthenticationManagerResolver$1.class
 com/gttc/lms/controller/AuthController.class

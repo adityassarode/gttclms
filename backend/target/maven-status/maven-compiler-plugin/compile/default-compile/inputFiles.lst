@@ -67,12 +67,14 @@
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/service/PdfUploadService.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/model/User.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/controller/QuestionPaperController.java
+/workspaces/gttclms/backend/src/main/java/com/gttc/lms/service/WebScrapeExportService.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/config/WebConfig.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/dto/ReserveRequest.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/controller/StudyNoteController.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/repository/StudyNoteRepository.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/controller/AuthController.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/controller/FavoriteController.java
+/workspaces/gttclms/backend/src/main/java/com/gttc/lms/dto/WebScrapeExportRequest.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/controller/StatusController.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/controller/BookController.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/repository/FavoriteRepository.java

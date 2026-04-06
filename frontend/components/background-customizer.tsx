@@ -130,7 +130,7 @@ export function BackgroundCustomizer() {
   }, []);
 
   return (
-    <div className="fixed right-3 top-3 z-[90]">
+    <div className="fixed bottom-4 right-3 z-30 sm:bottom-5 sm:right-5">
       <div className="relative">
         <Button
           type="button"
@@ -147,7 +147,7 @@ export function BackgroundCustomizer() {
         </Button>
 
         {isOpen ? (
-          <div className="absolute right-0 mt-2 w-72 rounded-xl border border-border bg-card p-3 shadow-xl">
+          <div className="absolute bottom-12 right-0 w-72 rounded-xl border border-border bg-card p-3 shadow-xl">
             <p className="text-sm font-medium text-foreground">
               Customize Background
             </p>

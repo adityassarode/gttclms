@@ -7,6 +7,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -20,7 +21,7 @@ public class EmailService {
     private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
     private static final String RESEND_API_URL = "https://api.resend.com/emails";
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
-    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(5);
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(12);
 
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
@@ -49,6 +50,34 @@ public class EmailService {
         queueSend(to, subject, htmlBody);
     }
 
+    public boolean sendHtmlAndWait(String to, String subject, String htmlBody) {
+        return sendHtmlAndWait(to, subject, htmlBody, null, null);
+    }
+
+    public boolean sendHtmlAndWait(
+            String to,
+            String subject,
+            String htmlBody,
+            String attachmentFileName,
+            byte[] attachmentBytes
+    ) {
+        if (to == null || to.isBlank()) {
+            return false;
+        }
+
+        if (!"resend".equalsIgnoreCase(mode)) {
+            logger.info("Email to {} subject '{}' body: {}", to, subject, htmlBody);
+            return false;
+        }
+
+        if (resendApiKey == null || resendApiKey.isBlank()) {
+            logger.warn("Email skipped: APP_RESEND_API_KEY is not configured");
+            return false;
+        }
+
+        return sendWithResend(to, subject, htmlBody, attachmentFileName, attachmentBytes);
+    }
+
     private void queueSend(String to, String subject, String htmlBody) {
         if (to == null || to.isBlank()) {
             return;
@@ -64,17 +93,37 @@ public class EmailService {
             return;
         }
 
-        CompletableFuture.runAsync(() -> sendWithResend(to, subject, htmlBody));
+        CompletableFuture.runAsync(() -> sendWithResend(to, subject, htmlBody, null, null));
     }
 
-    private void sendWithResend(String to, String subject, String htmlBody) {
+        private boolean sendWithResend(
+            String to,
+            String subject,
+            String htmlBody,
+            String attachmentFileName,
+            byte[] attachmentBytes
+        ) {
         try {
-            Map<String, Object> payload = Map.of(
-                    "from", from,
-                    "to", List.of(to),
-                    "subject", subject,
-                    "html", htmlBody
+            Map<String, Object> payload;
+            if (attachmentBytes != null && attachmentBytes.length > 0 && attachmentFileName != null && !attachmentFileName.isBlank()) {
+            payload = Map.of(
+                "from", from,
+                "to", List.of(to),
+                "subject", subject,
+                "html", htmlBody,
+                "attachments", List.of(Map.of(
+                    "filename", attachmentFileName,
+                    "content", Base64.getEncoder().encodeToString(attachmentBytes)
+                ))
             );
+            } else {
+            payload = Map.of(
+                "from", from,
+                "to", List.of(to),
+                "subject", subject,
+                "html", htmlBody
+            );
+            }
 
             String body = objectMapper.writeValueAsString(payload);
 
@@ -93,9 +142,13 @@ public class EmailService {
                         response.statusCode(),
                         response.body()
                 );
+                return false;
             }
+
+            return true;
         } catch (Exception ex) {
             logger.warn("Failed to send email with Resend", ex);
+            return false;
         }
     }
 

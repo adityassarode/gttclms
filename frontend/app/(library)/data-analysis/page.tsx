@@ -8,6 +8,7 @@ import {
   Download,
   Mail,
   RefreshCw,
+  Link2,
 } from "lucide-react";
 import {
   Bar,
@@ -55,6 +56,14 @@ type MissingStrategy =
   | "drop-rows"
   | "fill-numeric-mean"
   | "fill-empty-string";
+
+type QuickGraph = {
+  key: string;
+  title: string;
+  kind: "line" | "bar";
+  data: Array<{ label: string; value: number }>;
+  color: string;
+};
 
 function stripExtension(name: string) {
   const dot = name.lastIndexOf(".");
@@ -313,6 +322,118 @@ function makeHistogram(values: number[], binCount = 8) {
   return bins.map(({ label, count }) => ({ label, count }));
 }
 
+function extractFileNameFromUrl(urlValue: string) {
+  try {
+    const parsed = new URL(urlValue);
+    const candidate = parsed.pathname.split("/").pop() || "dataset";
+    return decodeURIComponent(candidate) || "dataset";
+  } catch {
+    return "dataset";
+  }
+}
+
+function extensionFromName(name: string) {
+  const dot = name.lastIndexOf(".");
+  if (dot <= 0 || dot === name.length - 1) {
+    return "";
+  }
+  return name.slice(dot + 1).toLowerCase();
+}
+
+function resolveDatasetExtension(nameFromUrl: string, contentType: string) {
+  const byName = extensionFromName(nameFromUrl);
+  if (["csv", "xlsx", "xls"].includes(byName)) {
+    return byName;
+  }
+
+  const type = contentType.toLowerCase();
+  if (type.includes("spreadsheet") || type.includes("excel")) {
+    return "xlsx";
+  }
+  if (type.includes("csv") || type.includes("comma-separated-values")) {
+    return "csv";
+  }
+
+  return "";
+}
+
+function formatDatasetName(name: string, extension: string) {
+  const safeBase = stripExtension(name || "dataset") || "dataset";
+  return `${safeBase}.${extension}`;
+}
+
+function trendSeries(rows: DataRow[], column: string, limit = 80) {
+  return rows
+    .map((row, index) => {
+      const value = toNumber(row[column]);
+      if (value === null) {
+        return null;
+      }
+      return { label: String(index + 1), value };
+    })
+    .filter(Boolean)
+    .slice(0, limit) as Array<{ label: string; value: number }>;
+}
+
+function movingAverageSeries(
+  rows: DataRow[],
+  column: string,
+  windowSize: number,
+  limit = 80,
+) {
+  const base = trendSeries(rows, column, limit).map((item) => item.value);
+  if (!base.length) {
+    return [] as Array<{ label: string; value: number }>;
+  }
+
+  const normalizedWindow = Math.max(2, windowSize);
+  const result: Array<{ label: string; value: number }> = [];
+
+  for (let i = 0; i < base.length; i += 1) {
+    const from = Math.max(0, i - normalizedWindow + 1);
+    const subset = base.slice(from, i + 1);
+    const avg = subset.reduce((sum, value) => sum + value, 0) / subset.length;
+    result.push({ label: String(i + 1), value: Number(avg.toFixed(4)) });
+  }
+
+  return result;
+}
+
+function cumulativeSeries(rows: DataRow[], column: string, limit = 80) {
+  const base = trendSeries(rows, column, limit);
+  let running = 0;
+  return base.map((item) => {
+    running += item.value;
+    return { label: item.label, value: Number(running.toFixed(4)) };
+  });
+}
+
+function histogramSeriesForColumn(rows: DataRow[], column: string, bins = 8) {
+  const values = rows
+    .map((row) => toNumber(row[column]))
+    .filter((value): value is number => value !== null);
+
+  return makeHistogram(values, bins).map((item) => ({
+    label: item.label,
+    value: item.count,
+  }));
+}
+
+function iqrOutlierCount(values: number[]) {
+  if (values.length < 4) {
+    return 0;
+  }
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const q1 = sorted[Math.floor(sorted.length * 0.25)];
+  const q3 = sorted[Math.floor(sorted.length * 0.75)];
+  const iqr = q3 - q1;
+  const lower = q1 - 1.5 * iqr;
+  const upper = q3 + 1.5 * iqr;
+
+  return sorted.filter((value) => value < lower || value > upper).length;
+}
+
 async function buildOutputFile(
   rows: DataRow[],
   format: "csv" | "xlsx",
@@ -373,6 +494,9 @@ export default function DataAnalysisPage() {
     DataAnalysisStoredFile[]
   >([]);
   const [isFilesLoading, setIsFilesLoading] = React.useState(false);
+  const [datasetUrl, setDatasetUrl] = React.useState("");
+  const [isImportingUrl, setIsImportingUrl] = React.useState(false);
+  const [previewColumnQuery, setPreviewColumnQuery] = React.useState("");
 
   const columnTypes = React.useMemo(
     () => getColumnTypes(rows, columns),
@@ -478,6 +602,117 @@ export default function DataAnalysisPage() {
       .slice(0, 8)
       .map(([label, count]) => ({ label, count }));
   }, [rows, columns, columnTypes]);
+
+  const qualityInsights = React.useMemo(() => {
+    const totalCells = rows.length * columns.length;
+    const missingCells = missingByColumn.reduce(
+      (sum, item) => sum + item.missing,
+      0,
+    );
+    const completeness =
+      totalCells === 0 ? 0 : ((totalCells - missingCells) / totalCells) * 100;
+    const heavyMissingColumns = missingByColumn.filter(
+      (item) => rows.length > 0 && item.missing / rows.length >= 0.3,
+    ).length;
+
+    const firstNumeric = numericColumns[0];
+    const firstNumericValues = firstNumeric
+      ? rows
+          .map((row) => toNumber(row[firstNumeric]))
+          .filter((value): value is number => value !== null)
+      : [];
+
+    return {
+      completeness: Number(completeness.toFixed(1)),
+      heavyMissingColumns,
+      outliers: iqrOutlierCount(firstNumericValues),
+      numericColumnCount: numericColumns.length,
+    };
+  }, [rows, columns.length, missingByColumn, numericColumns]);
+
+  const previewColumns = React.useMemo(() => {
+    const base = selectedColumns.length ? selectedColumns : columns;
+    const query = previewColumnQuery.trim().toLowerCase();
+    if (!query) {
+      return base;
+    }
+    return base.filter((column) => column.toLowerCase().includes(query));
+  }, [selectedColumns, columns, previewColumnQuery]);
+
+  const quickGraphGallery = React.useMemo(() => {
+    if (!numericColumns.length) {
+      return [] as QuickGraph[];
+    }
+
+    const graphs: QuickGraph[] = [];
+    const seedColumns = numericColumns.slice(0, 5);
+
+    seedColumns.forEach((column, index) => {
+      const baseColor = CHART_COLORS[index % CHART_COLORS.length];
+      const avgColor = CHART_COLORS[(index + 2) % CHART_COLORS.length];
+      const histColor = CHART_COLORS[(index + 4) % CHART_COLORS.length];
+      const cumColor = CHART_COLORS[(index + 6) % CHART_COLORS.length];
+
+      graphs.push({
+        key: `${column}-trend`,
+        title: `${column} trend`,
+        kind: "line",
+        data: trendSeries(rows, column, 70),
+        color: baseColor,
+      });
+
+      graphs.push({
+        key: `${column}-moving-average`,
+        title: `${column} moving average`,
+        kind: "line",
+        data: movingAverageSeries(rows, column, 3 + index * 2, 70),
+        color: avgColor,
+      });
+
+      graphs.push({
+        key: `${column}-histogram`,
+        title: `${column} histogram`,
+        kind: "bar",
+        data: histogramSeriesForColumn(rows, column, 6 + index),
+        color: histColor,
+      });
+
+      graphs.push({
+        key: `${column}-cumulative`,
+        title: `${column} cumulative`,
+        kind: "line",
+        data: cumulativeSeries(rows, column, 70),
+        color: cumColor,
+      });
+    });
+
+    const primaryColumn = seedColumns[0];
+    let filler = 0;
+    while (graphs.length < 20) {
+      if (filler % 2 === 0) {
+        const window = 2 + (filler % 6);
+        graphs.push({
+          key: `${primaryColumn}-smoothed-${filler}`,
+          title: `${primaryColumn} smooth w=${window}`,
+          kind: "line",
+          data: movingAverageSeries(rows, primaryColumn, window, 70),
+          color: CHART_COLORS[filler % CHART_COLORS.length],
+        });
+      } else {
+        const bins = 5 + (filler % 8);
+        graphs.push({
+          key: `${primaryColumn}-bins-${filler}`,
+          title: `${primaryColumn} histogram ${bins} bins`,
+          kind: "bar",
+          data: histogramSeriesForColumn(rows, primaryColumn, bins),
+          color: CHART_COLORS[filler % CHART_COLORS.length],
+        });
+      }
+      filler += 1;
+    }
+
+    return graphs.slice(0, 25);
+  }, [rows, numericColumns]);
 
   const cleanedRows = React.useMemo(() => {
     if (!rows.length) {
@@ -605,22 +840,19 @@ export default function DataAnalysisPage() {
     reloadStoredFiles();
   }, [reloadStoredFiles]);
 
-  const handleUploadFile = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
+  const loadDatasetFile = React.useCallback(
+    async (file: File, successMessage: string) => {
+      if (file.size > MAX_DATASET_BYTES) {
+        toast.error("File size must be 50MB or less");
+        return;
+      }
 
-    if (file.size > MAX_DATASET_BYTES) {
-      toast.error("File size must be 50MB or less");
-      event.target.value = "";
-      return;
-    }
+      const extension = extensionFromName(file.name);
+      if (!["csv", "xlsx", "xls"].includes(extension)) {
+        toast.error("Only CSV or Excel files are supported");
+        return;
+      }
 
-    setIsParsing(true);
-    try {
       const parsedRows = await parseSpreadsheet(file);
       if (!parsedRows.length) {
         toast.error("No tabular data found in this file");
@@ -632,12 +864,75 @@ export default function DataAnalysisPage() {
       setRows(parsedRows);
       setColumns(parsedColumns);
       setSelectedColumns(parsedColumns);
-      toast.success("Data loaded successfully");
+      toast.success(successMessage);
+    },
+    [],
+  );
+
+  const handleUploadFile = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    setIsParsing(true);
+    try {
+      await loadDatasetFile(file, "Data loaded successfully");
     } catch (error) {
       toast.error(getErrorMessage(error, "Unable to parse file"));
     } finally {
       setIsParsing(false);
       event.target.value = "";
+    }
+  };
+
+  const handleImportFromUrl = async () => {
+    const inputUrl = datasetUrl.trim();
+    if (!inputUrl) {
+      toast.error("Enter a CSV or Excel file URL");
+      return;
+    }
+
+    setIsImportingUrl(true);
+    try {
+      const response = await fetch(inputUrl, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`Unable to fetch file (${response.status})`);
+      }
+
+      const blob = await response.blob();
+      if (blob.size > MAX_DATASET_BYTES) {
+        throw new Error("File size must be 50MB or less");
+      }
+
+      const sourceName = extractFileNameFromUrl(inputUrl);
+      const extension = resolveDatasetExtension(
+        sourceName,
+        response.headers.get("content-type") || "",
+      );
+
+      if (!["csv", "xlsx", "xls"].includes(extension)) {
+        throw new Error("URL must point to a CSV or Excel file");
+      }
+
+      const resolvedName = formatDatasetName(sourceName, extension);
+      const file = new File([blob], resolvedName, {
+        type: blob.type || "application/octet-stream",
+      });
+
+      await loadDatasetFile(file, "Dataset imported from link");
+      setDatasetUrl("");
+    } catch (error) {
+      toast.error(
+        getErrorMessage(
+          error,
+          "Unable to import file from link. Ensure the URL is public and CORS-enabled.",
+        ),
+      );
+    } finally {
+      setIsImportingUrl(false);
     }
   };
 
@@ -679,13 +974,19 @@ export default function DataAnalysisPage() {
         fileName || "dataset",
       );
 
-      await api.uploadCleanedDataFile({
+      const uploaded = await api.uploadCleanedDataFile({
         file,
         originalFileName: fileName || "dataset",
         format: sendFormat,
       });
 
-      toast.success("Cleaned file emailed and stored for 30 minutes");
+      if (uploaded.emailSent) {
+        toast.success("Cleaned file emailed and stored for 30 minutes");
+      } else {
+        toast.warning(
+          "File stored for 30 minutes, but email could not be delivered. Use the download list below.",
+        );
+      }
       await reloadStoredFiles();
     } catch (error) {
       toast.error(getErrorMessage(error, "Unable to send cleaned file"));
@@ -742,6 +1043,36 @@ export default function DataAnalysisPage() {
               Maximum upload size: 50MB (.csv, .xlsx, .xls)
             </p>
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="datasetUrl" className="flex items-center gap-2">
+              <Link2 className="h-4 w-4" />
+              CSV/Excel link
+            </Label>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                id="datasetUrl"
+                value={datasetUrl}
+                onChange={(event) => setDatasetUrl(event.target.value)}
+                placeholder="https://example.com/dataset.csv"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleImportFromUrl}
+                disabled={isImportingUrl}
+              >
+                {isImportingUrl ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Import Link
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              The link must be public and allow cross-origin downloads.
+            </p>
+          </div>
+
           {fileName ? (
             <div className="text-sm text-muted-foreground">
               Loaded file:{" "}
@@ -778,6 +1109,47 @@ export default function DataAnalysisPage() {
                   {missingByColumn.reduce((sum, row) => sum + row.missing, 0)}
                 </p>
                 <p className="text-sm text-muted-foreground">Missing Values</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card className="border-border/50">
+              <CardContent className="p-4">
+                <p className="text-2xl font-semibold">
+                  {qualityInsights.completeness}%
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Completeness Score
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-border/50">
+              <CardContent className="p-4">
+                <p className="text-2xl font-semibold">
+                  {qualityInsights.heavyMissingColumns}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Columns With 30%+ Missing
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-border/50">
+              <CardContent className="p-4">
+                <p className="text-2xl font-semibold">
+                  {qualityInsights.outliers}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Potential Outliers (IQR)
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-border/50">
+              <CardContent className="p-4">
+                <p className="text-2xl font-semibold">
+                  {qualityInsights.numericColumnCount}
+                </p>
+                <p className="text-sm text-muted-foreground">Numeric Columns</p>
               </CardContent>
             </Card>
           </div>
@@ -1150,6 +1522,20 @@ export default function DataAnalysisPage() {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="previewColumnQuery">
+                  Preview columns filter
+                </Label>
+                <Input
+                  id="previewColumnQuery"
+                  value={previewColumnQuery}
+                  onChange={(event) =>
+                    setPreviewColumnQuery(event.target.value)
+                  }
+                  placeholder="Type part of a column name"
+                />
+              </div>
+
               <div className="flex flex-wrap items-center gap-2">
                 <Button onClick={() => handleDownload("csv")}>
                   <Download className="mr-2 h-4 w-4" />
@@ -1193,25 +1579,20 @@ export default function DataAnalysisPage() {
                 <table className="w-full min-w-[860px]">
                   <thead>
                     <tr className="border-b border-border/40 bg-muted/20">
-                      {(selectedColumns.length ? selectedColumns : columns).map(
-                        (column) => (
-                          <th
-                            key={column}
-                            className="px-3 py-3 text-left text-sm"
-                          >
-                            {column}
-                          </th>
-                        ),
-                      )}
+                      {previewColumns.map((column) => (
+                        <th
+                          key={column}
+                          className="px-3 py-3 text-left text-sm"
+                        >
+                          {column}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
                     {cleanedPreviewRows.map((row, index) => (
                       <tr key={index} className="border-b border-border/30">
-                        {(selectedColumns.length
-                          ? selectedColumns
-                          : columns
-                        ).map((column) => (
+                        {previewColumns.map((column) => (
                           <td
                             key={`${index}-${column}`}
                             className="px-3 py-3 text-sm"
@@ -1230,6 +1611,60 @@ export default function DataAnalysisPage() {
                   </tbody>
                 </table>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50">
+            <CardHeader>
+              <CardTitle className="text-lg">
+                Advanced Graph Gallery ({quickGraphGallery.length} graphs)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {quickGraphGallery.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Add at least one numeric column to generate advanced graphs.
+                </p>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {quickGraphGallery.map((graph) => (
+                    <div
+                      key={graph.key}
+                      className="rounded-xl border border-border/40 p-3"
+                    >
+                      <p className="mb-2 text-sm font-medium text-foreground">
+                        {graph.title}
+                      </p>
+                      <div className="h-[170px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          {graph.kind === "bar" ? (
+                            <BarChart data={graph.data}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="label" hide />
+                              <YAxis hide />
+                              <Tooltip />
+                              <Bar dataKey="value" fill={graph.color} />
+                            </BarChart>
+                          ) : (
+                            <LineChart data={graph.data}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="label" hide />
+                              <YAxis hide />
+                              <Tooltip />
+                              <Line
+                                type="monotone"
+                                dataKey="value"
+                                stroke={graph.color}
+                                dot={false}
+                              />
+                            </LineChart>
+                          )}
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </>

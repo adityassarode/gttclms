@@ -79,9 +79,13 @@ public class DataAnalysisController {
         User user = currentUserResolver.resolve(principal, authentication);
         DataAnalysisFileService.DownloadPayload payload = dataAnalysisFileService.loadForDownload(user, id);
 
-        MediaType mediaType = "xlsx".equalsIgnoreCase(payload.fileFormat())
-                ? MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                : MediaType.parseMediaType("text/csv");
+        String format = payload.fileFormat() == null ? "" : payload.fileFormat().toLowerCase();
+        MediaType mediaType = switch (format) {
+            case "xlsx" -> MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            case "pdf" -> MediaType.APPLICATION_PDF;
+            case "docx" -> MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+            default -> MediaType.parseMediaType("text/csv");
+        };
 
         String safeFileName = payload.fileName().replace("\"", "");
 

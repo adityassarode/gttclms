@@ -21,6 +21,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const MAX_PDF_BYTES = 2 * 1024 * 1024;
 
@@ -39,6 +49,9 @@ export default function AdminQuestionPapersPage() {
   const [isUpdating, setIsUpdating] = React.useState(false);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<QuestionPaper | null>(
+    null,
+  );
 
   const [subjectName, setSubjectName] = React.useState("");
   const [department, setDepartment] = React.useState("");
@@ -255,23 +268,20 @@ export default function AdminQuestionPapersPage() {
     }
   };
 
-  const handleDelete = async (paper: QuestionPaper) => {
-    if (
-      !window.confirm(
-        `Delete question paper \"${paper.subjectName}\" (${paper.questionPaperYear})?`,
-      )
-    ) {
+  const handleDeleteConfirmed = async () => {
+    if (!deleteTarget) {
       return;
     }
 
-    const id = String(paper.id);
+    const id = String(deleteTarget.id);
     setDeletingId(id);
     try {
-      await api.deleteQuestionPaper(paper.id);
+      await api.deleteQuestionPaper(deleteTarget.id);
       setPapers((current) => current.filter((item) => String(item.id) !== id));
       if (editingId === id) {
         resetEditForm();
       }
+      setDeleteTarget(null);
       toast.success("Question paper deleted");
     } catch (error) {
       toast.error(getErrorMessage(error, "Unable to delete question paper"));
@@ -600,7 +610,7 @@ export default function AdminQuestionPapersPage() {
                           variant="ghost"
                           className="text-destructive hover:text-destructive"
                           disabled={deletingId === String(paper.id)}
-                          onClick={() => handleDelete(paper)}
+                          onClick={() => setDeleteTarget(paper)}
                         >
                           {deletingId === String(paper.id) ? (
                             <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -629,6 +639,37 @@ export default function AdminQuestionPapersPage() {
           ) : null}
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open && !deletingId) {
+            setDeleteTarget(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete question paper?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove {deleteTarget?.subjectName} (
+              {deleteTarget?.questionPaperYear}).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={Boolean(deletingId)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirmed}
+              disabled={Boolean(deletingId)}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {deletingId ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

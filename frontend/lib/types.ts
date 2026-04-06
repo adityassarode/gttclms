@@ -216,6 +216,7 @@ export interface DataAnalysisStoredFile {
   cleanedFileName: string;
   fileFormat: string;
   downloadUrl: string;
+  emailSent?: boolean;
   createdAt: string;
   expiresAt: string;
 }
@@ -246,6 +247,17 @@ export interface WebScrapeTableItem {
 }
 
 export interface WebScrapeResponse {
+  url: string;
+  title?: string | null;
+  headings: string[];
+  paragraphs: string[];
+  links: WebScrapeLinkItem[];
+  tables: WebScrapeTableItem[];
+}
+
+export interface WebScrapeExportPayload {
+  fileName: string;
+  format: "pdf" | "docx";
   url: string;
   title?: string | null;
   headings: string[];
