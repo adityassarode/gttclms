@@ -1,5 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
+
+const FULL_NAME = "Aditya Sarode";
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -220,6 +223,26 @@ function DashboardPageContent() {
   >([]);
   const [latestNotes, setLatestNotes] = React.useState<StudyNote[]>([]);
   const [resourcesLoading, setResourcesLoading] = React.useState(false);
+  const [typed, setTyped] = useState("");
+  const [done, setDone] = useState(false);
+  const [showLine, setShowLine] = useState(false);
+
+  useEffect(() => {
+    let i = 0;
+    const t = setInterval(() => {
+      i += 1;
+      setTyped(FULL_NAME.slice(0, i));
+      if (i === FULL_NAME.length) {
+        clearInterval(t);
+        setTimeout(() => {
+          setDone(true);
+          setTimeout(() => setShowLine(true), 200);
+        }, 180);
+      }
+    }, 72);
+
+    return () => clearInterval(t);
+  }, []);
 
   React.useEffect(() => {
     setSearch(queryInUrl);
@@ -455,6 +478,106 @@ function DashboardPageContent() {
           Feed your curiosity. Build your mind. One page today. A stronger you
           tomorrow.
         </p>
+        {/* Credit Signature */}
+        <div
+          style={{
+            marginTop: "20px",
+            paddingTop: "16px",
+            borderTop: "1px solid #dcfce7",
+            display: "flex",
+            alignItems: "flex-start",
+            gap: "10px",
+            animation: "fadeUp 0.5s ease forwards",
+          }}
+        >
+          {/* Dot */}
+          <div
+            style={{
+              width: "6px",
+              height: "6px",
+              background: "#4ade80",
+              borderRadius: "50%",
+              boxShadow: "0 0 0 3px #4ade8033",
+              animation: "dotPop 0.4s cubic-bezier(.22,1,.36,1) forwards",
+              flexShrink: 0,
+              marginTop: "4px",
+            }}
+          />
+
+          <div>
+            {/* Label */}
+            <p
+              style={{
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: "11px",
+                fontWeight: 500,
+                letterSpacing: "1.5px",
+                textTransform: "uppercase",
+                color: "#6b7280",
+                margin: 0,
+                animation: "labelIn 0.6s ease forwards",
+              }}
+            >
+              Designed &amp; Developed by
+            </p>
+
+            {/* Typewriter Name */}
+            <div style={{ marginTop: "4px", display: "inline-block" }}>
+              <span
+                style={{
+                  fontFamily: "'Playfair Display', Georgia, serif",
+                  fontStyle: "italic",
+                  fontWeight: 700,
+                  fontSize: "22px",
+                  color: "#166534",
+                  lineHeight: 1,
+                }}
+              >
+                {typed}
+              </span>
+              {!done && (
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: "2px",
+                    height: "20px",
+                    background: "#16a34a",
+                    marginLeft: "2px",
+                    verticalAlign: "middle",
+                    borderRadius: "1px",
+                    animation: "blink 0.75s step-end infinite",
+                  }}
+                />
+              )}
+            </div>
+
+            {/* Ink Underline */}
+            {showLine && (
+              <div style={{ marginTop: "2px" }}>
+                <svg
+                  width="148"
+                  height="10"
+                  viewBox="0 0 148 10"
+                  style={{ overflow: "visible", display: "block" }}
+                >
+                  <path
+                    d="M2 7 Q20 2 40 6 Q70 10 100 5 Q124 1 146 6"
+                    stroke="#22c55e"
+                    strokeWidth="2"
+                    fill="none"
+                    strokeLinecap="round"
+                    style={{
+                      strokeDasharray: 120,
+                      strokeDashoffset: 120,
+                      animation:
+                        "inkDraw 0.7s cubic-bezier(.22,1,.36,1) forwards",
+                    }}
+                  />
+                </svg>
+              </div>
+            )}
+          </div>
+        </div>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
