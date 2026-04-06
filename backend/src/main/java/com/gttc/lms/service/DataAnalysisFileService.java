@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -115,7 +116,8 @@ public class DataAnalysisFileService {
             MultipartFile file,
             String originalFileName,
             String requestedFormat,
-            String requestBaseUrl
+            String requestBaseUrl,
+            boolean sendEmail
     ) {
         validateUser(user);
         cleanupExpiredFilesInternal();
@@ -157,7 +159,7 @@ public class DataAnalysisFileService {
             dataAnalysisFileRepository.save(row);
 
             String downloadUrl = buildDownloadUrl(requestBaseUrl, row.getId());
-            boolean emailSent = sendCleanedFileEmail(user, row, downloadUrl);
+            boolean emailSent = sendEmail && sendCleanedFileEmail(user, row, downloadUrl);
 
             return toResponse(row, downloadUrl, emailSent);
         } catch (IOException ex) {
@@ -171,7 +173,8 @@ public class DataAnalysisFileService {
             byte[] fileBytes,
             String originalFileName,
             String requestedFormat,
-            String requestBaseUrl
+            String requestBaseUrl,
+            boolean sendEmail
     ) {
         byte[] safeBytes = Objects.requireNonNullElse(fileBytes, new byte[0]);
         MultipartFile multipartFile = new GeneratedMultipartFile(
@@ -180,7 +183,7 @@ public class DataAnalysisFileService {
                 contentTypeForFormat(requestedFormat)
         );
 
-        return storeCleanedFile(user, multipartFile, originalFileName, requestedFormat, requestBaseUrl);
+        return storeCleanedFile(user, multipartFile, originalFileName, requestedFormat, requestBaseUrl, sendEmail);
     }
 
     @Transactional
@@ -188,8 +191,8 @@ public class DataAnalysisFileService {
         validateUser(user);
         cleanupExpiredFilesInternal();
 
-        UUID userId = userIdentityBridgeService.resolveOperationalUserId(user);
-        return dataAnalysisFileRepository.findByUserIdAndExpiresAtAfterOrderByCreatedAtDesc(userId, Instant.now())
+        List<UUID> candidateUserIds = resolveCandidateUserIds(user);
+        return dataAnalysisFileRepository.findByUserIdInAndExpiresAtAfterOrderByCreatedAtDesc(candidateUserIds, Instant.now())
                 .stream()
                 .map(row -> toResponse(row, buildDownloadUrl(requestBaseUrl, row.getId()), false))
                 .collect(Collectors.toList());
@@ -200,9 +203,9 @@ public class DataAnalysisFileService {
         validateUser(user);
         cleanupExpiredFilesInternal();
 
-        UUID userId = userIdentityBridgeService.resolveOperationalUserId(user);
+        List<UUID> candidateUserIds = resolveCandidateUserIds(user);
 
-        DataAnalysisFile row = dataAnalysisFileRepository.findByIdAndUserId(id, userId)
+        DataAnalysisFile row = dataAnalysisFileRepository.findByIdAndUserIdIn(id, candidateUserIds)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Cleaned file not found or expired"));
 
         if (row.getExpiresAt() != null && row.getExpiresAt().isBefore(Instant.now())) {
@@ -234,8 +237,8 @@ public class DataAnalysisFileService {
     public void deleteMine(User user, UUID id) {
         validateUser(user);
 
-        UUID userId = userIdentityBridgeService.resolveOperationalUserId(user);
-        DataAnalysisFile row = dataAnalysisFileRepository.findByIdAndUserId(id, userId)
+        List<UUID> candidateUserIds = resolveCandidateUserIds(user);
+        DataAnalysisFile row = dataAnalysisFileRepository.findByIdAndUserIdIn(id, candidateUserIds)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Cleaned file not found"));
 
         deleteStoredFile(row.getStoredFilePath());
@@ -269,6 +272,22 @@ public class DataAnalysisFileService {
         response.setCreatedAt(row.getCreatedAt());
         response.setExpiresAt(row.getExpiresAt());
         return response;
+    }
+
+    private List<UUID> resolveCandidateUserIds(User user) {
+        UUID operationalId = userIdentityBridgeService.resolveOperationalUserId(user);
+        UUID providerId = UserUuidResolver.resolve(user);
+
+        List<UUID> userIds = new ArrayList<>();
+        if (operationalId != null) {
+            userIds.add(operationalId);
+        }
+
+        if (providerId != null && !providerId.equals(operationalId)) {
+            userIds.add(providerId);
+        }
+
+        return userIds;
     }
 
     private String buildDownloadUrl(String requestBaseUrl, UUID fileId) {

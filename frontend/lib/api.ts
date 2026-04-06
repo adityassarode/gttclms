@@ -664,6 +664,10 @@ function normalizeDataAnalysisCleanedPayload(
     formData.append("format", payload.format);
   }
 
+  if (typeof payload.sendEmail === "boolean") {
+    formData.append("sendEmail", String(payload.sendEmail));
+  }
+
   return formData;
 }
 
@@ -1020,7 +1024,13 @@ export const api = {
       "/api/web-scrape/export",
       {
         method: "POST",
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ...payload,
+          sendEmail:
+            typeof payload.sendEmail === "boolean"
+              ? payload.sendEmail
+              : undefined,
+        }),
       },
       "Unable to export scraped data",
     );

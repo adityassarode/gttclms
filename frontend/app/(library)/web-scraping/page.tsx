@@ -161,7 +161,7 @@ export default function WebScrapingPage() {
     }
   };
 
-  const createExportFile = async () => {
+  const createExportFile = async (sendEmail: boolean) => {
     if (!result) {
       throw new Error("Scrape a website first");
     }
@@ -174,6 +174,7 @@ export default function WebScrapingPage() {
     return api.exportScrapedFile({
       fileName: safeFileName,
       format: exportFormat,
+      sendEmail,
       url: result.url,
       title: result.title,
       headings: result.headings,
@@ -186,10 +187,16 @@ export default function WebScrapingPage() {
   const handleDownloadExport = async () => {
     setIsDownloading(true);
     try {
-      const stored = await createExportFile();
+      const stored = await createExportFile(false);
       const downloaded = await api.downloadProtectedFile(stored.downloadUrl);
       const finalName = downloaded.fileName || stored.cleanedFileName;
       triggerBlobDownload(downloaded.blob, finalName);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(
+          "gttc:cleaned-files:updated",
+          String(Date.now()),
+        );
+      }
 
       toast.success(`Downloaded ${finalName}`);
     } catch (error) {
@@ -202,7 +209,13 @@ export default function WebScrapingPage() {
   const handleEmailExport = async () => {
     setIsEmailing(true);
     try {
-      const stored = await createExportFile();
+      const stored = await createExportFile(true);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(
+          "gttc:cleaned-files:updated",
+          String(Date.now()),
+        );
+      }
 
       if (stored.emailSent) {
         toast.success("Email sent. File link is active for 30 minutes.");

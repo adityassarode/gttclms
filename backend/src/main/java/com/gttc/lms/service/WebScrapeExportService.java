@@ -36,6 +36,7 @@ public class WebScrapeExportService {
     public DataAnalysisFileResponse export(User user, WebScrapeExportRequest request, String requestBaseUrl) {
         String format = normalizeFormat(request.getFormat());
         String originalFileName = normalizeBaseName(request.getFileName()) + "." + format;
+        boolean sendEmail = request.isSendEmail();
 
         byte[] output;
         try {
@@ -44,7 +45,7 @@ public class WebScrapeExportService {
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to build export file");
         }
 
-        return dataAnalysisFileService.storeGeneratedFile(user, output, originalFileName, format, requestBaseUrl);
+        return dataAnalysisFileService.storeGeneratedFile(user, output, originalFileName, format, requestBaseUrl, sendEmail);
     }
 
     private String normalizeFormat(String value) {

@@ -17,6 +17,7 @@ public class WebScrapeExportRequest {
     private List<String> paragraphs = new ArrayList<>();
     private List<WebScrapeResponse.LinkItem> links = new ArrayList<>();
     private List<WebScrapeResponse.TableItem> tables = new ArrayList<>();
+    private Boolean sendEmail;
 
     public String getFileName() {
         return fileName;
@@ -80,5 +81,13 @@ public class WebScrapeExportRequest {
 
     public void setTables(List<WebScrapeResponse.TableItem> tables) {
         this.tables = tables;
+    }
+
+    public boolean isSendEmail() {
+        return sendEmail == null || sendEmail;
+    }
+
+    public void setSendEmail(Boolean sendEmail) {
+        this.sendEmail = sendEmail;
     }
 }

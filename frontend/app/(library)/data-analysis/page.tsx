@@ -69,6 +69,38 @@ const GRAPH_CARD_BACKGROUNDS = [
   "from-indigo-50 via-white to-blue-100",
   "from-fuchsia-50 via-white to-pink-100",
 ];
+const FAMILY_COLORS: Record<
+  GraphFamily,
+  {
+    primary: string;
+    accent: string;
+  }
+> = {
+  Core: { primary: "#2563eb", accent: "#0ea5e9" },
+  Distribution: { primary: "#7c3aed", accent: "#a855f7" },
+  Relationship: { primary: "#0891b2", accent: "#0ea5e9" },
+  Time: { primary: "#16a34a", accent: "#22c55e" },
+  Structure: { primary: "#ea580c", accent: "#fb923c" },
+  Geo: { primary: "#0284c7", accent: "#38bdf8" },
+  Advanced: { primary: "#db2777", accent: "#f472b6" },
+};
+
+const AXIS_LABEL_BY_CHART_TYPE: Record<string, { x: string; y: string }> = {
+  "line-chart": { x: "Index", y: "Value" },
+  "multi-line-chart": { x: "Index", y: "Value" },
+  "area-chart": { x: "Index", y: "Value" },
+  "stacked-area-chart": { x: "Index", y: "Stacked value" },
+  "bar-chart": { x: "Category", y: "Value" },
+  "horizontal-bar-chart": { x: "Value", y: "Category" },
+  "grouped-bar-chart": { x: "Category", y: "Grouped value" },
+  "stacked-bar-chart": { x: "Category", y: "Stacked value" },
+  "stacked-bar-100-chart": { x: "Category", y: "Percentage" },
+  histogram: { x: "Bin range", y: "Frequency" },
+  "scatter-plot": { x: "X metric", y: "Y metric" },
+  "bubble-chart": { x: "X metric", y: "Y metric" },
+  "time-series-rolling-average": { x: "Time", y: "Value" },
+  "step-chart": { x: "Step index", y: "Value" },
+};
 const MAX_DATASET_BYTES = 50 * 1024 * 1024;
 
 type DataRow = Record<string, unknown>;
@@ -87,6 +119,15 @@ type GraphFamily =
   | "Structure"
   | "Geo"
   | "Advanced";
+
+type AxisUnit = "count" | "percent" | "score";
+
+type AxisProfile = {
+  xLabel: string;
+  yLabel: string;
+  unit: AxisUnit;
+  scale: "linear" | "normalized 0-100" | "indexed";
+};
 
 type GraphDatum = {
   label: string;
@@ -1070,15 +1111,19 @@ export default function DataAnalysisPage() {
       ),
     };
 
-    return REQUESTED_GRAPH_TYPES.map((template, index) => ({
-      key: `${template.chartType}-${index + 1}`,
-      title: template.title,
-      chartType: template.chartType,
-      family: template.family,
-      data: dataByType[template.chartType] || baseData,
-      color: CHART_COLORS[index % CHART_COLORS.length],
-      accent: CHART_COLORS[(index + 3) % CHART_COLORS.length],
-    })).slice(0, 50);
+    return REQUESTED_GRAPH_TYPES.map((template, index) => {
+      const familyColors = FAMILY_COLORS[template.family];
+
+      return {
+        key: `${template.chartType}-${index + 1}`,
+        title: template.title,
+        chartType: template.chartType,
+        family: template.family,
+        data: dataByType[template.chartType] || baseData,
+        color: familyColors.primary,
+        accent: familyColors.accent,
+      };
+    }).slice(0, 50);
   }, [rows, numericColumns, topCategoryData]);
 
   React.useEffect(() => {
@@ -1860,8 +1905,117 @@ export default function DataAnalysisPage() {
     );
   }, []);
 
+  const getAxisProfile = React.useCallback((graph: QuickGraph): AxisProfile => {
+    if (
+      graph.chartType === "stacked-bar-100-chart" ||
+      graph.chartType === "gauge-chart"
+    ) {
+      return {
+        xLabel: "Category",
+        yLabel: "Percentage",
+        unit: "percent",
+        scale: "normalized 0-100",
+      };
+    }
+
+    if (
+      [
+        "bar-chart",
+        "horizontal-bar-chart",
+        "grouped-bar-chart",
+        "stacked-bar-chart",
+        "histogram",
+        "treemap",
+        "funnel-chart",
+        "tree-diagram",
+        "dendrogram",
+        "sunburst-chart",
+        "icicle-chart",
+        "sankey-diagram",
+        "chord-diagram",
+        "network-graph",
+        "animated-bar-race-chart",
+      ].includes(graph.chartType)
+    ) {
+      return {
+        xLabel: "Category",
+        yLabel: "Count",
+        unit: "count",
+        scale: "linear",
+      };
+    }
+
+    if (
+      [
+        "time-series-rolling-average",
+        "candlestick-chart",
+        "ohlc-chart",
+        "calendar-heatmap",
+        "step-chart",
+      ].includes(graph.chartType)
+    ) {
+      return {
+        xLabel: "Time",
+        yLabel: "Index score",
+        unit: "score",
+        scale: "indexed",
+      };
+    }
+
+    if (
+      [
+        "scatter-plot",
+        "bubble-chart",
+        "hexbin-plot",
+        "pair-plot",
+        "correlation-heatmap",
+        "scatter-3d",
+        "parallel-coordinates-plot",
+      ].includes(graph.chartType)
+    ) {
+      return {
+        xLabel: "Metric X",
+        yLabel: "Metric Y",
+        unit: "score",
+        scale: "linear",
+      };
+    }
+
+    return {
+      xLabel: "Dimension",
+      yLabel: "Score",
+      unit: "score",
+      scale: "linear",
+    };
+  }, []);
+
+  const formatAxisValue = React.useCallback(
+    (value: number | string, unit: AxisUnit) => {
+      const numeric = typeof value === "number" ? value : Number(value);
+      if (!Number.isFinite(numeric)) {
+        return String(value);
+      }
+
+      if (unit === "percent") {
+        return `${numeric.toFixed(0)}%`;
+      }
+
+      if (unit === "count") {
+        return `${Math.round(numeric)}`;
+      }
+
+      if (Math.abs(numeric) >= 100) {
+        return `${numeric.toFixed(0)}`;
+      }
+
+      return `${numeric.toFixed(1)}`;
+    },
+    [],
+  );
+
   const renderGraphVisualization = React.useCallback(
     (graph: QuickGraph, isFullscreen: boolean) => {
+      const axisProfile = getAxisProfile(graph);
       const commonMargin = { top: 12, right: 12, left: 8, bottom: 4 };
       const axisProps = {
         tickLine: false,
@@ -1869,13 +2023,25 @@ export default function DataAnalysisPage() {
         minTickGap: 24,
         tick: { fontSize: 11, fill: "#475569" },
       };
+      const xAxisProps = {
+        ...axisProps,
+        tickFormatter: (value: string | number) => {
+          const text = String(value ?? "");
+          return text.length > 14 ? `${text.slice(0, 12)}..` : text;
+        },
+      };
+      const yAxisProps = {
+        ...axisProps,
+        tickFormatter: (value: string | number) =>
+          formatAxisValue(value, axisProfile.unit),
+      };
 
       if (graph.chartType === "line-chart") {
         return (
           <LineChart data={graph.data} margin={commonMargin}>
             <CartesianGrid stroke="#dbeafe" strokeDasharray="4 4" />
-            <XAxis dataKey="label" hide={!isFullscreen} {...axisProps} />
-            <YAxis hide={!isFullscreen} {...axisProps} />
+            <XAxis dataKey="label" hide={false} {...xAxisProps} />
+            <YAxis hide={false} {...yAxisProps} />
             <Tooltip contentStyle={tooltipContentStyle} />
             <Line
               type="monotone"
@@ -1892,12 +2058,14 @@ export default function DataAnalysisPage() {
         return (
           <LineChart data={graph.data} margin={commonMargin}>
             <CartesianGrid stroke="#dbeafe" strokeDasharray="4 4" />
-            <XAxis dataKey="label" hide={!isFullscreen} {...axisProps} />
-            <YAxis hide={!isFullscreen} {...axisProps} />
+            <XAxis dataKey="label" hide={false} {...xAxisProps} />
+            <YAxis hide={false} {...yAxisProps} />
             <Tooltip contentStyle={tooltipContentStyle} />
+            <Legend />
             <Line
               type="monotone"
               dataKey="value"
+              name="Series A"
               stroke={graph.color}
               strokeWidth={2.2}
               dot={false}
@@ -1905,6 +2073,7 @@ export default function DataAnalysisPage() {
             <Line
               type="monotone"
               dataKey="value2"
+              name="Series B"
               stroke={graph.accent}
               strokeWidth={2.2}
               dot={false}
@@ -1912,6 +2081,7 @@ export default function DataAnalysisPage() {
             <Line
               type="monotone"
               dataKey="value3"
+              name="Series C"
               stroke="#0f766e"
               strokeWidth={2.2}
               dot={false}
@@ -1924,8 +2094,8 @@ export default function DataAnalysisPage() {
         return (
           <AreaChart data={graph.data} margin={commonMargin}>
             <CartesianGrid stroke="#dbeafe" strokeDasharray="4 4" />
-            <XAxis dataKey="label" hide={!isFullscreen} {...axisProps} />
-            <YAxis hide={!isFullscreen} {...axisProps} />
+            <XAxis dataKey="label" hide={false} {...xAxisProps} />
+            <YAxis hide={false} {...yAxisProps} />
             <Tooltip contentStyle={tooltipContentStyle} />
             <Area
               type="monotone"
@@ -1951,12 +2121,14 @@ export default function DataAnalysisPage() {
             }
           >
             <CartesianGrid stroke="#dbeafe" strokeDasharray="4 4" />
-            <XAxis dataKey="label" hide={!isFullscreen} {...axisProps} />
-            <YAxis hide={!isFullscreen} {...axisProps} />
+            <XAxis dataKey="label" hide={false} {...xAxisProps} />
+            <YAxis hide={false} {...yAxisProps} />
             <Tooltip contentStyle={tooltipContentStyle} />
+            <Legend />
             <Area
               type="monotone"
               dataKey="value"
+              name="Series A"
               stackId="s"
               stroke={graph.color}
               fill={graph.color}
@@ -1965,6 +2137,7 @@ export default function DataAnalysisPage() {
             <Area
               type="monotone"
               dataKey="value2"
+              name="Series B"
               stackId="s"
               stroke={graph.accent}
               fill={graph.accent}
@@ -1973,6 +2146,7 @@ export default function DataAnalysisPage() {
             <Area
               type="monotone"
               dataKey="value3"
+              name="Series C"
               stackId="s"
               stroke="#0f766e"
               fill="#0f766e"
@@ -1986,8 +2160,8 @@ export default function DataAnalysisPage() {
         return (
           <BarChart data={graph.data} margin={commonMargin}>
             <CartesianGrid stroke="#dbeafe" strokeDasharray="4 4" />
-            <XAxis dataKey="label" hide={!isFullscreen} {...axisProps} />
-            <YAxis hide={!isFullscreen} {...axisProps} />
+            <XAxis dataKey="label" hide={false} {...xAxisProps} />
+            <YAxis hide={false} {...yAxisProps} />
             <Tooltip contentStyle={tooltipContentStyle} />
             <Bar dataKey="value" fill={graph.color} radius={[8, 8, 2, 2]} />
           </BarChart>
@@ -1998,12 +2172,12 @@ export default function DataAnalysisPage() {
         return (
           <BarChart data={graph.data} layout="vertical" margin={commonMargin}>
             <CartesianGrid stroke="#dbeafe" strokeDasharray="4 4" />
-            <XAxis type="number" hide={!isFullscreen} {...axisProps} />
+            <XAxis type="number" hide={false} {...yAxisProps} />
             <YAxis
               type="category"
               dataKey="label"
-              hide={!isFullscreen}
-              {...axisProps}
+              hide={false}
+              {...xAxisProps}
             />
             <Tooltip contentStyle={tooltipContentStyle} />
             <Bar dataKey="value" fill={graph.color} radius={[2, 8, 8, 2]} />
@@ -2015,12 +2189,28 @@ export default function DataAnalysisPage() {
         return (
           <BarChart data={graph.data} margin={commonMargin}>
             <CartesianGrid stroke="#dbeafe" strokeDasharray="4 4" />
-            <XAxis dataKey="label" hide={!isFullscreen} {...axisProps} />
-            <YAxis hide={!isFullscreen} {...axisProps} />
+            <XAxis dataKey="label" hide={false} {...xAxisProps} />
+            <YAxis hide={false} {...yAxisProps} />
             <Tooltip contentStyle={tooltipContentStyle} />
-            <Bar dataKey="value" fill={graph.color} radius={[6, 6, 0, 0]} />
-            <Bar dataKey="value2" fill={graph.accent} radius={[6, 6, 0, 0]} />
-            <Bar dataKey="value3" fill="#0f766e" radius={[6, 6, 0, 0]} />
+            <Legend />
+            <Bar
+              dataKey="value"
+              name="Series A"
+              fill={graph.color}
+              radius={[6, 6, 0, 0]}
+            />
+            <Bar
+              dataKey="value2"
+              name="Series B"
+              fill={graph.accent}
+              radius={[6, 6, 0, 0]}
+            />
+            <Bar
+              dataKey="value3"
+              name="Series C"
+              fill="#0f766e"
+              radius={[6, 6, 0, 0]}
+            />
           </BarChart>
         );
       }
@@ -2032,31 +2222,35 @@ export default function DataAnalysisPage() {
         return (
           <BarChart data={graph.data} margin={commonMargin}>
             <CartesianGrid stroke="#dbeafe" strokeDasharray="4 4" />
-            <XAxis dataKey="label" hide={!isFullscreen} {...axisProps} />
+            <XAxis dataKey="label" hide={false} {...xAxisProps} />
             <YAxis
-              hide={!isFullscreen}
+              hide={false}
               domain={
                 graph.chartType === "stacked-bar-100-chart"
                   ? [0, 100]
                   : undefined
               }
-              {...axisProps}
+              {...yAxisProps}
             />
             <Tooltip contentStyle={tooltipContentStyle} />
+            <Legend />
             <Bar
               dataKey="value"
+              name="Series A"
               stackId="s"
               fill={graph.color}
               radius={[6, 6, 0, 0]}
             />
             <Bar
               dataKey="value2"
+              name="Series B"
               stackId="s"
               fill={graph.accent}
               radius={[6, 6, 0, 0]}
             />
             <Bar
               dataKey="value3"
+              name="Series C"
               stackId="s"
               fill="#0f766e"
               radius={[6, 6, 0, 0]}
@@ -2069,17 +2263,12 @@ export default function DataAnalysisPage() {
         return (
           <ScatterChart margin={commonMargin}>
             <CartesianGrid stroke="#dbeafe" strokeDasharray="4 4" />
-            <XAxis
-              type="number"
-              dataKey="value"
-              hide={!isFullscreen}
-              {...axisProps}
-            />
+            <XAxis type="number" dataKey="value" hide={false} {...xAxisProps} />
             <YAxis
               type="number"
               dataKey="value2"
-              hide={!isFullscreen}
-              {...axisProps}
+              hide={false}
+              {...yAxisProps}
             />
             <Tooltip contentStyle={tooltipContentStyle} />
             <Scatter data={graph.data} fill={graph.color} />
@@ -2091,18 +2280,8 @@ export default function DataAnalysisPage() {
         return (
           <ScatterChart margin={commonMargin}>
             <CartesianGrid stroke="#dbeafe" strokeDasharray="4 4" />
-            <XAxis
-              type="number"
-              dataKey="x"
-              hide={!isFullscreen}
-              {...axisProps}
-            />
-            <YAxis
-              type="number"
-              dataKey="y"
-              hide={!isFullscreen}
-              {...axisProps}
-            />
+            <XAxis type="number" dataKey="x" hide={false} {...xAxisProps} />
+            <YAxis type="number" dataKey="y" hide={false} {...yAxisProps} />
             <ZAxis type="number" dataKey="size" range={[60, 360]} />
             <Tooltip contentStyle={tooltipContentStyle} />
             <Scatter data={graph.data} fill={graph.color} fillOpacity={0.7} />
@@ -2114,12 +2293,14 @@ export default function DataAnalysisPage() {
         return (
           <LineChart data={graph.data} margin={commonMargin}>
             <CartesianGrid stroke="#dbeafe" strokeDasharray="4 4" />
-            <XAxis dataKey="label" hide={!isFullscreen} {...axisProps} />
-            <YAxis hide={!isFullscreen} {...axisProps} />
+            <XAxis dataKey="label" hide={false} {...xAxisProps} />
+            <YAxis hide={false} {...yAxisProps} />
             <Tooltip contentStyle={tooltipContentStyle} />
+            <Legend />
             <Line
               type="monotone"
               dataKey="value"
+              name="Actual"
               stroke={graph.color}
               strokeWidth={2.3}
               dot={false}
@@ -2127,6 +2308,7 @@ export default function DataAnalysisPage() {
             <Line
               type="monotone"
               dataKey="value2"
+              name="Rolling Avg"
               stroke={graph.accent}
               strokeWidth={2.6}
               dot={false}
@@ -2139,8 +2321,8 @@ export default function DataAnalysisPage() {
         return (
           <LineChart data={graph.data} margin={commonMargin}>
             <CartesianGrid stroke="#dbeafe" strokeDasharray="4 4" />
-            <XAxis dataKey="label" hide={!isFullscreen} {...axisProps} />
-            <YAxis hide={!isFullscreen} {...axisProps} />
+            <XAxis dataKey="label" hide={false} {...xAxisProps} />
+            <YAxis hide={false} {...yAxisProps} />
             <Tooltip contentStyle={tooltipContentStyle} />
             <Line
               type="stepAfter"
@@ -2253,7 +2435,16 @@ export default function DataAnalysisPage() {
 
       return renderSvgGraph(graph);
     },
-    [renderSvgGraph, tooltipContentStyle],
+    [formatAxisValue, getAxisProfile, renderSvgGraph, tooltipContentStyle],
+  );
+
+  const getAxisDescriptor = React.useCallback(
+    (graph: QuickGraph) => {
+      const axis = getAxisProfile(graph);
+      const unitText = axis.unit === "percent" ? "%" : axis.unit;
+      return `X-axis: ${axis.xLabel} | Y-axis: ${axis.yLabel} (${unitText}) | Scale: ${axis.scale}`;
+    },
+    [getAxisProfile],
   );
 
   const cleanedRows = React.useMemo(() => {
@@ -2402,6 +2593,38 @@ export default function DataAnalysisPage() {
     reloadStoredFiles();
   }, [reloadStoredFiles]);
 
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const onFocus = () => {
+      reloadStoredFiles();
+    };
+
+    const onVisibilityChange = () => {
+      if (!document.hidden) {
+        reloadStoredFiles();
+      }
+    };
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === "gttc:cleaned-files:updated") {
+        reloadStoredFiles();
+      }
+    };
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("storage", onStorage);
+
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [reloadStoredFiles]);
+
   const loadDatasetFile = React.useCallback(
     async (file: File, successMessage: string) => {
       if (file.size > MAX_DATASET_BYTES) {
@@ -2513,13 +2736,33 @@ export default function DataAnalysisPage() {
       return;
     }
 
-    const { blob, outputName } = await buildOutputFile(
-      cleanedRows,
-      format,
-      fileName || "dataset",
-    );
-    triggerDownload(blob, outputName);
-    toast.success(`Downloaded ${outputName}`);
+    try {
+      const { blob, outputName, file } = await buildOutputFile(
+        cleanedRows,
+        format,
+        fileName || "dataset",
+      );
+
+      triggerDownload(blob, outputName);
+
+      await api.uploadCleanedDataFile({
+        file,
+        originalFileName: fileName || "dataset",
+        format,
+        sendEmail: false,
+      });
+
+      await reloadStoredFiles();
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(
+          "gttc:cleaned-files:updated",
+          String(Date.now()),
+        );
+      }
+      toast.success(`Downloaded and stored ${outputName} for 30 minutes`);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Unable to download cleaned file"));
+    }
   };
 
   const handleSendToEmail = async () => {
@@ -2540,6 +2783,7 @@ export default function DataAnalysisPage() {
         file,
         originalFileName: fileName || "dataset",
         format: sendFormat,
+        sendEmail: true,
       });
 
       if (uploaded.emailSent) {
@@ -2550,6 +2794,12 @@ export default function DataAnalysisPage() {
         );
       }
       await reloadStoredFiles();
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(
+          "gttc:cleaned-files:updated",
+          String(Date.now()),
+        );
+      }
     } catch (error) {
       toast.error(getErrorMessage(error, "Unable to send cleaned file"));
     } finally {
@@ -2949,6 +3199,7 @@ export default function DataAnalysisPage() {
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {quickGraphGallery.map((graph, graphIndex) => {
                     const isFullscreen = fullscreenGraphKey === graph.key;
+                    const axisProfile = getAxisProfile(graph);
                     const graphSurface =
                       GRAPH_CARD_BACKGROUNDS[
                         graphIndex % GRAPH_CARD_BACKGROUNDS.length
@@ -2991,16 +3242,28 @@ export default function DataAnalysisPage() {
                           >
                             {graph.title}
                           </p>
-                          <Badge
-                            variant="outline"
-                            className={
-                              isFullscreen
-                                ? "border-slate-300 text-slate-700"
-                                : "border-slate-300/70 bg-white/70 text-slate-700"
-                            }
-                          >
-                            {graph.family}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant="outline"
+                              className={
+                                isFullscreen
+                                  ? "border-slate-300 text-slate-700"
+                                  : "border-slate-300/70 bg-white/70 text-slate-700"
+                              }
+                            >
+                              {graph.family}
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className={
+                                isFullscreen
+                                  ? "border-slate-300 text-slate-700"
+                                  : "border-slate-300/70 bg-white/70 text-slate-700"
+                              }
+                            >
+                              {axisProfile.unit}
+                            </Badge>
+                          </div>
                         </div>
                         <div
                           className={
@@ -3013,6 +3276,9 @@ export default function DataAnalysisPage() {
                             {renderGraphVisualization(graph, isFullscreen)}
                           </ResponsiveContainer>
                         </div>
+                        <p className="mt-2 text-[11px] text-slate-500">
+                          {getAxisDescriptor(graph)}
+                        </p>
                       </div>
                     );
                   })}

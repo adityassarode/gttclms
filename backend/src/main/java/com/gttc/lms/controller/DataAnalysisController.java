@@ -44,6 +44,7 @@ public class DataAnalysisController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(required = false) String originalFileName,
             @RequestParam(required = false) String format,
+            @RequestParam(required = false, defaultValue = "true") boolean sendEmail,
             HttpServletRequest request
     ) {
         User user = currentUserResolver.resolve(principal, authentication);
@@ -52,7 +53,7 @@ public class DataAnalysisController {
                 .build()
                 .toUriString();
 
-        return dataAnalysisFileService.storeCleanedFile(user, file, originalFileName, format, baseUrl);
+                return dataAnalysisFileService.storeCleanedFile(user, file, originalFileName, format, baseUrl, sendEmail);
     }
 
     @GetMapping("/cleaned-files/me")

@@ -225,6 +225,7 @@ export interface DataAnalysisCleanedFilePayload {
   file: File;
   originalFileName?: string;
   format?: "csv" | "xlsx";
+  sendEmail?: boolean;
 }
 
 export interface WebScrapeRequestPayload {
@@ -264,4 +265,5 @@ export interface WebScrapeExportPayload {
   paragraphs: string[];
   links: WebScrapeLinkItem[];
   tables: WebScrapeTableItem[];
+  sendEmail?: boolean;
 }
