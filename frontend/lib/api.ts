@@ -2,12 +2,17 @@ import type {
   AdminLoginPayload,
   AnalyticsResponse,
   AuthResponse,
+  ChatbotMessagePayload,
+  ChatbotMessageResponse,
   BanUserPayload,
   Book,
   BookUpsertPayload,
   DataAnalysisCleanedFilePayload,
   DataAnalysisStoredFile,
   DigitalBookCreatePayload,
+  FaceVerificationPayload,
+  FaceVerificationSession,
+  FaceVerificationSessionCreatePayload,
   BorrowRecord,
   BorrowRequestPayload,
   DonationRecord,
@@ -22,6 +27,10 @@ import type {
   StudyNote,
   StudyNoteCreatePayload,
   StudyNoteUpdatePayload,
+  TopicVideo,
+  TopicVideoComment,
+  TopicVideoCommentCreatePayload,
+  TopicVideoCreatePayload,
   StudentRequestPayload,
   StudentResponse,
   User,
@@ -1309,6 +1318,124 @@ export const api = {
       };
       return profile;
     });
+  },
+
+  getTopicVideos(params?: {
+    subject?: string;
+    department?: string;
+    semester?: string;
+    year?: string;
+  }) {
+    return request<TopicVideo[]>(
+      "/api/topic-videos",
+      {},
+      "Unable to load topic videos",
+      params,
+      false,
+    );
+  },
+
+  createTopicVideo(payload: TopicVideoCreatePayload) {
+    return request<TopicVideo>(
+      "/api/topic-videos",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      "Unable to add topic video",
+    );
+  },
+
+  async deleteTopicVideo(videoId: string) {
+    await request<void>(
+      `/api/topic-videos/${videoId}`,
+      {
+        method: "DELETE",
+      },
+      "Unable to delete topic video",
+    );
+  },
+
+  getTopicVideoComments(videoId: string) {
+    return request<TopicVideoComment[]>(
+      `/api/topic-videos/${videoId}/comments`,
+      {},
+      "Unable to load comments",
+      undefined,
+      false,
+    );
+  },
+
+  addTopicVideoComment(
+    videoId: string,
+    payload: TopicVideoCommentCreatePayload,
+  ) {
+    return request<TopicVideoComment>(
+      `/api/topic-videos/${videoId}/comments`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      "Unable to add comment",
+    );
+  },
+
+  verifyFace(payload: FaceVerificationPayload) {
+    return request<User>(
+      "/api/users/face/verify",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      "Unable to verify face",
+    ).then((profile) => {
+      meCachedProfile = {
+        value: profile,
+        expiresAt: Date.now() + AUTH_ME_CACHE_TTL_MS,
+      };
+      return profile;
+    });
+  },
+
+  createFaceVerificationSession(
+    payload?: FaceVerificationSessionCreatePayload,
+  ) {
+    return request<FaceVerificationSession>(
+      "/api/users/face/sessions",
+      {
+        method: "POST",
+        body: JSON.stringify(payload || {}),
+      },
+      "Unable to create verification session",
+    );
+  },
+
+  getFaceVerificationSession(token: string) {
+    return request<FaceVerificationSession>(
+      `/api/users/face/sessions/${encodeURIComponent(token)}`,
+      {},
+      "Unable to check verification session",
+    );
+  },
+
+  downloadFaceImageForAdmin(userId: string | number) {
+    return requestBlobWithAuth(
+      `/api/users/face/admin/${userId}/image`,
+      "Unable to load face image",
+    );
+  },
+
+  sendChatbotMessage(payload: ChatbotMessagePayload) {
+    return request<ChatbotMessageResponse>(
+      "/api/chatbot/message",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      "Unable to reach Nira",
+      undefined,
+      false,
+    );
   },
 };
 

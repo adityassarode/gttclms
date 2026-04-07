@@ -10,6 +10,7 @@ import com.gttc.lms.repository.UserRepository;
 import com.gttc.lms.service.AuthService;
 import com.gttc.lms.service.CurrentUserResolver;
 import com.gttc.lms.service.DtoMapper;
+import com.gttc.lms.service.FaceVerificationService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,15 +32,18 @@ public class UserController {
     private final AuthService authService;
     private final UserRepository userRepository;
     private final CurrentUserResolver currentUserResolver;
+    private final FaceVerificationService faceVerificationService;
 
     public UserController(
             AuthService authService,
             UserRepository userRepository,
-            CurrentUserResolver currentUserResolver
+            CurrentUserResolver currentUserResolver,
+            FaceVerificationService faceVerificationService
     ) {
         this.authService = authService;
         this.userRepository = userRepository;
         this.currentUserResolver = currentUserResolver;
+        this.faceVerificationService = faceVerificationService;
     }
 
     @GetMapping("/me")
@@ -63,7 +67,7 @@ public class UserController {
         List<User> users = userRepository.findAll();
 
         return users.stream()
-            .map(DtoMapper::toUser)
+            .map(this::toUserResponse)
             .collect(Collectors.toList());
     }
 
@@ -107,6 +111,8 @@ public class UserController {
     }
 
     private UserResponse toUserResponse(User user) {
-        return DtoMapper.toUser(user);
+        UserResponse response = DtoMapper.toUser(user);
+        response.setFaceImageAvailable(faceVerificationService.hasFaceImage(user.getId()));
+        return response;
     }
 }

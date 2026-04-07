@@ -1,0 +1,40 @@
+version: "3.1"
+
+intents:
+  - greet
+  - borrow_process
+  - donate_process
+  - resources_location
+  - verification_process
+  - account_help
+  - goodbye
+  - thanks
+
+responses:
+  utter_greet:
+    - text: "Hello there! I'm Nira, your personal library assistant. Need help with books, your account, or anything else in the GTTC LMS? I'm always here for you."
+
+  utter_borrow_process:
+    - text: "To borrow a physical book: login, open the book page, click Borrow, and check the Borrowed section for due date details."
+
+  utter_donate_process:
+    - text: "To donate a book: go to Donate, submit title/author/details and images, then track approval from My Donations."
+
+  utter_resources_location:
+    - text: "You can find study notes, question papers, and topic videos on the dashboard and from the Notes, Question Papers, and Topic Videos sections."
+
+  utter_verification_process:
+    - text: "Complete student verification first, then finish face verification. If camera fails, use the QR option to verify from another device."
+
+  utter_account_help:
+    - text: "For account help, check Settings for profile details and use Help Center for guidance. If login fails, sign in again and complete verification steps."
+
+  utter_goodbye:
+    - text: "Glad to help. Reach out anytime!"
+
+  utter_thanks:
+    - text: "You're welcome. Happy learning!"
+
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: true

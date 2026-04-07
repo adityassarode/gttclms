@@ -190,6 +190,9 @@ function buildFallbackUserProfile(
     role: "USER",
     status: "ACTIVE",
     verified: false,
+    faceVerified: false,
+    faceVerifiedAt: null,
+    faceImageAvailable: false,
   };
 }
 

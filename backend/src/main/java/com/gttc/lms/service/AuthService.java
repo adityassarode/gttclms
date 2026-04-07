@@ -71,6 +71,8 @@ public class AuthService {
         user.setStatus(UserStatus.ACTIVE);
         user.setProvider(AuthProvider.LOCAL);
         user.setVerified(false);
+        user.setFaceVerified(false);
+        user.setFaceVerifiedAt(null);
         userRepository.save(user);
         return new AuthResponse(jwtService.createToken(user), toUserResponse(user));
     }
@@ -101,6 +103,8 @@ public class AuthService {
                     user.setStatus(UserStatus.ACTIVE);
                     user.setProvider(AuthProvider.LOCAL);
                     user.setVerified(true);
+                    user.setFaceVerified(false);
+                    user.setFaceVerifiedAt(null);
                     return userRepository.save(user);
                 });
         return new AuthResponse(jwtService.createToken(admin), toUserResponse(admin));
@@ -126,6 +130,8 @@ public class AuthService {
             created.setRole(Role.USER);
             created.setStatus(UserStatus.ACTIVE);
             created.setVerified(false);
+            created.setFaceVerified(false);
+            created.setFaceVerifiedAt(null);
             return userRepository.save(created);
         });
         if (user.getStatus() == UserStatus.BANNED) {
@@ -145,6 +151,8 @@ public class AuthService {
             ? request.getSemester() : student.getSemester());
         user.setYear(request.getYear() != null && !request.getYear().isBlank() ? request.getYear() : student.getYear());
         user.setVerified(true);
+        user.setFaceVerified(false);
+        user.setFaceVerifiedAt(null);
         userRepository.save(user);
         emailService.send(user.getEmail(), "Welcome to GTTC Library",
                 "Welcome to GTTC Library. Your account is now verified.");

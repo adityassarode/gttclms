@@ -13,6 +13,7 @@ import {
   GraduationCap,
   BarChart3,
   Gift,
+  PlayCircle,
   Settings,
   LogOut,
   Menu,
@@ -45,6 +46,7 @@ const navigation = [
   { name: "Overview", href: "/admin", icon: LayoutDashboard },
   { name: "Students", href: "/admin/students", icon: GraduationCap },
   { name: "Books", href: "/admin/books", icon: BookOpen },
+  { name: "Topic Videos", href: "/admin/videos", icon: PlayCircle },
   {
     name: "Question Papers",
     href: "/admin/question-papers",

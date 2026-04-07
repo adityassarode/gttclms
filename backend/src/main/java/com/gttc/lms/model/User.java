@@ -66,6 +66,12 @@ public class User {
     @Column(name = "verified")
     private boolean verified;
 
+    @Column(name = "face_verified")
+    private boolean faceVerified;
+
+    @Column(name = "face_verified_at")
+    private Instant faceVerifiedAt;
+
     @Column(name = "created_at")
     private Instant createdAt = Instant.now();
 
@@ -183,6 +189,22 @@ public class User {
 
     public void setVerified(boolean verified) {
         this.verified = verified;
+    }
+
+    public boolean isFaceVerified() {
+        return faceVerified;
+    }
+
+    public void setFaceVerified(boolean faceVerified) {
+        this.faceVerified = faceVerified;
+    }
+
+    public Instant getFaceVerifiedAt() {
+        return faceVerifiedAt;
+    }
+
+    public void setFaceVerifiedAt(Instant faceVerifiedAt) {
+        this.faceVerifiedAt = faceVerifiedAt;
     }
 
     public Instant getCreatedAt() {

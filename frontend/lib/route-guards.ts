@@ -20,6 +20,10 @@ function verifyPath(redirectPath: string) {
   return `/verify?redirect=${encodeURIComponent(redirectPath)}`;
 }
 
+function faceVerifyPath(redirectPath: string) {
+  return `/face-verify?redirect=${encodeURIComponent(redirectPath)}`;
+}
+
 export function useProtectedPage(opts?: { redirectPath?: string }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -27,6 +31,8 @@ export function useProtectedPage(opts?: { redirectPath?: string }) {
 
   const redirectTarget = normalizeRedirectPath(opts?.redirectPath || pathname);
   const needsVerification = user && isUserRole(user.role) && !user.verified;
+  const needsFaceVerification =
+    user && isUserRole(user.role) && user.verified && !user.faceVerified;
 
   React.useEffect(() => {
     if (!isReady) {
@@ -40,8 +46,21 @@ export function useProtectedPage(opts?: { redirectPath?: string }) {
 
     if (needsVerification && pathname !== "/verify") {
       router.replace(verifyPath(redirectTarget));
+      return;
     }
-  }, [isReady, needsVerification, pathname, redirectTarget, router, user]);
+
+    if (needsFaceVerification && pathname !== "/face-verify") {
+      router.replace(faceVerifyPath(redirectTarget));
+    }
+  }, [
+    isReady,
+    needsFaceVerification,
+    needsVerification,
+    pathname,
+    redirectTarget,
+    router,
+    user,
+  ]);
 
   if (!isReady) {
     return false;
@@ -52,6 +71,10 @@ export function useProtectedPage(opts?: { redirectPath?: string }) {
   }
 
   if (needsVerification && pathname !== "/verify") {
+    return false;
+  }
+
+  if (needsFaceVerification && pathname !== "/face-verify") {
     return false;
   }
 
@@ -98,6 +121,8 @@ export function useRequireLoginAction() {
   const router = useRouter();
   const { user } = useAuth();
   const needsVerification = user && isUserRole(user.role) && !user.verified;
+  const needsFaceVerification =
+    user && isUserRole(user.role) && user.verified && !user.faceVerified;
 
   return React.useCallback(
     (redirectPath?: string) => {
@@ -113,8 +138,13 @@ export function useRequireLoginAction() {
         return false;
       }
 
+      if (needsFaceVerification) {
+        router.push(faceVerifyPath(target));
+        return false;
+      }
+
       return true;
     },
-    [needsVerification, pathname, router, user],
+    [needsFaceVerification, needsVerification, pathname, router, user],
   );
 }

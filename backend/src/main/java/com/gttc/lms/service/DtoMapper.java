@@ -33,6 +33,9 @@ public final class DtoMapper {
         response.setRole(user.getRole());
         response.setStatus(user.getStatus());
         response.setVerified(user.isVerified());
+        response.setFaceVerified(user.isFaceVerified());
+        response.setFaceVerifiedAt(user.getFaceVerifiedAt());
+        response.setFaceImageAvailable(user.isFaceVerified());
         return response;
     }
 

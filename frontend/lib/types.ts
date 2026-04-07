@@ -17,6 +17,69 @@ export interface User {
   role: UserRole;
   status: UserStatus;
   verified: boolean;
+  faceVerified: boolean;
+  faceVerifiedAt?: string | null;
+  faceImageAvailable: boolean;
+}
+
+export interface TopicVideo {
+  id: string;
+  title: string;
+  subject: string;
+  department: string;
+  semester: string;
+  year: string;
+  videoUrl: string;
+  createdAt: string;
+}
+
+export interface TopicVideoComment {
+  id: string;
+  videoId: string;
+  userId: string;
+  comment: string;
+  commentedBy?: string | null;
+  createdAt: string;
+}
+
+export interface TopicVideoCreatePayload {
+  title: string;
+  subject: string;
+  department: string;
+  semester: string;
+  year: string;
+  videoUrl: string;
+}
+
+export interface TopicVideoCommentCreatePayload {
+  comment: string;
+}
+
+export interface FaceVerificationPayload {
+  imageDataUrl: string;
+  sessionToken?: string;
+}
+
+export interface FaceVerificationSessionCreatePayload {
+  redirectPath?: string;
+}
+
+export interface FaceVerificationSession {
+  token: string;
+  status: "PENDING" | "COMPLETED" | "EXPIRED" | string;
+  redirectPath: string;
+  verificationUrl: string;
+  expiresAt: string;
+  completedAt?: string | null;
+}
+
+export interface ChatbotMessagePayload {
+  message: string;
+  senderId?: string;
+}
+
+export interface ChatbotMessageResponse {
+  reply: string;
 }
 
 export interface AuthResponse {

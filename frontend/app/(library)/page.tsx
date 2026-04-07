@@ -59,6 +59,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { TopicVideosSection } from "@/components/topic-videos-section";
 
 const RECENT_BOOKS_KEY = "gttc_recent_books";
 
@@ -750,6 +751,8 @@ function DashboardPageContent() {
           </Card>
         </div>
       </section>
+
+      <TopicVideosSection />
 
       <section>
         <div className="mb-6 flex items-center justify-between">

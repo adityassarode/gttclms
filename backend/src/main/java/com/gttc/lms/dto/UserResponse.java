@@ -2,6 +2,7 @@ package com.gttc.lms.dto;
 
 import com.gttc.lms.model.enums.Role;
 import com.gttc.lms.model.enums.UserStatus;
+import java.time.Instant;
 
 public class UserResponse {
     private Long id;
@@ -16,6 +17,9 @@ public class UserResponse {
     private Role role;
     private UserStatus status;
     private boolean verified;
+    private boolean faceVerified;
+    private Instant faceVerifiedAt;
+    private boolean faceImageAvailable;
 
     public Long getId() {
         return id;
@@ -111,5 +115,29 @@ public class UserResponse {
 
     public void setVerified(boolean verified) {
         this.verified = verified;
+    }
+
+    public boolean isFaceVerified() {
+        return faceVerified;
+    }
+
+    public void setFaceVerified(boolean faceVerified) {
+        this.faceVerified = faceVerified;
+    }
+
+    public Instant getFaceVerifiedAt() {
+        return faceVerifiedAt;
+    }
+
+    public void setFaceVerifiedAt(Instant faceVerifiedAt) {
+        this.faceVerifiedAt = faceVerifiedAt;
+    }
+
+    public boolean isFaceImageAvailable() {
+        return faceImageAvailable;
+    }
+
+    public void setFaceImageAvailable(boolean faceImageAvailable) {
+        this.faceImageAvailable = faceImageAvailable;
     }
 }

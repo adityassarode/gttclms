@@ -91,6 +91,8 @@ public class SupabaseUserService {
 
         if (isNew) {
             user.setVerified(false);
+            user.setFaceVerified(false);
+            user.setFaceVerifiedAt(null);
         }
 
         try {

@@ -1,0 +1,42 @@
+version: "3.1"
+
+stories:
+  - story: greeting flow
+    steps:
+      - intent: greet
+      - action: utter_greet
+
+  - story: borrow help flow
+    steps:
+      - intent: borrow_process
+      - action: utter_borrow_process
+
+  - story: donate help flow
+    steps:
+      - intent: donate_process
+      - action: utter_donate_process
+
+  - story: resources help flow
+    steps:
+      - intent: resources_location
+      - action: utter_resources_location
+
+  - story: verification help flow
+    steps:
+      - intent: verification_process
+      - action: utter_verification_process
+
+  - story: account help flow
+    steps:
+      - intent: account_help
+      - action: utter_account_help
+
+  - story: thanks flow
+    steps:
+      - intent: thanks
+      - action: utter_thanks
+
+  - story: goodbye flow
+    steps:
+      - intent: goodbye
+      - action: utter_goodbye

@@ -1,0 +1,58 @@
+version: "3.1"
+
+nlu:
+  - intent: greet
+    examples: |
+      - hi
+      - hello
+      - hey
+      - hello nira
+      - can you help me
+      - I need help
+
+  - intent: borrow_process
+    examples: |
+      - how do I borrow a book
+      - how can I borrow from library
+      - what is the process to borrow books
+      - where can I see borrowed books
+
+  - intent: donate_process
+    examples: |
+      - how do I donate a book
+      - how can I donate books
+      - where can I track donation approval
+      - donation process
+
+  - intent: resources_location
+    examples: |
+      - where can I find notes
+      - where are question papers
+      - how do I watch topic videos
+      - where are academic resources
+
+  - intent: verification_process
+    examples: |
+      - how do I verify my account
+      - what is face verification
+      - why am I redirected to face verification
+      - student verification steps
+
+  - intent: account_help
+    examples: |
+      - account issue
+      - login problem
+      - help with my profile
+      - settings help
+
+  - intent: thanks
+    examples: |
+      - thanks
+      - thank you
+      - thanks nira
+
+  - intent: goodbye
+    examples: |
+      - bye
+      - goodbye
+      - see you

@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
+import { isUserRole } from "@/lib/role-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -237,10 +238,24 @@ export default function LibraryLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { user, isAuthenticated, logout } = useAuth();
+  const pathname = usePathname();
+  const { user, isAuthenticated, isReady, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [globalSearch, setGlobalSearch] = React.useState("");
   const [notificationCount, setNotificationCount] = React.useState(0);
+
+  React.useEffect(() => {
+    if (!isReady || !user) {
+      return;
+    }
+
+    if (isUserRole(user.role) && user.verified && !user.faceVerified) {
+      const redirectTarget = pathname || "/";
+      router.replace(
+        `/face-verify?redirect=${encodeURIComponent(redirectTarget)}`,
+      );
+    }
+  }, [isReady, pathname, router, user]);
 
   React.useEffect(() => {
     let cancelled = false;

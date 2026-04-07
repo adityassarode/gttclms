@@ -46,6 +46,10 @@ function normalizeRedirectPath(path?: string | null) {
   return path;
 }
 
+function faceVerifyPath(redirectPath: string) {
+  return `/face-verify?redirect=${encodeURIComponent(redirectPath)}`;
+}
+
 function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -106,6 +110,11 @@ function LoginPageContent() {
       return;
     }
 
+    if (isUserRole(user.role) && user.verified && !user.faceVerified) {
+      router.replace(faceVerifyPath(redirectTo));
+      return;
+    }
+
     router.replace(redirectTo);
   }, [isReady, resolveRedirectTarget, router, user]);
 
@@ -162,6 +171,18 @@ function LoginPageContent() {
           "Account created. Verify your student ID to unlock restricted actions.",
         );
         router.replace(`/verify?redirect=${encodeURIComponent(redirectTo)}`);
+        return;
+      }
+
+      if (
+        isUserRole(profile.role) &&
+        profile.verified &&
+        !profile.faceVerified
+      ) {
+        toast.success(
+          "Student verified. Complete face verification to continue.",
+        );
+        router.replace(faceVerifyPath(redirectTo));
         return;
       }
 

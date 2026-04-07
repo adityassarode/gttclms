@@ -41,11 +41,15 @@ function normalizeRedirectPath(path?: string | null) {
     return "/";
   }
 
-  if (path.startsWith("/verify")) {
+  if (path.startsWith("/verify") || path.startsWith("/face-verify")) {
     return "/";
   }
 
   return path;
+}
+
+function faceVerifyPath(redirectPath: string) {
+  return `/face-verify?redirect=${encodeURIComponent(redirectPath)}`;
 }
 
 function VerifyPageContent() {
@@ -94,6 +98,10 @@ function VerifyPageContent() {
     }
 
     if (user.verified) {
+      if (!user.faceVerified) {
+        router.replace(faceVerifyPath(redirectTo));
+        return;
+      }
       router.replace(redirectTo);
     }
   }, [isReady, redirectTo, router, user]);
@@ -127,7 +135,6 @@ function VerifyPageContent() {
 
   const handleConfirm = async (event?: React.SyntheticEvent) => {
     event?.preventDefault();
-    console.log("clicked");
 
     if (!registerNumber.trim()) {
       toast.error("Register number is required");
@@ -145,8 +152,6 @@ function VerifyPageContent() {
 
     setLoading(true);
     try {
-      console.log("sending verify request");
-
       const profile = await api.verifyStudent({
         registerNumber: registerNumber.trim().toUpperCase(),
         name: form.name,
@@ -161,10 +166,13 @@ function VerifyPageContent() {
       toast.success("Verification successful");
 
       const destination = normalizeRedirectPath(redirectTo);
+      const nextPath = profile.faceVerified
+        ? destination
+        : faceVerifyPath(destination);
       if (typeof window !== "undefined") {
-        window.location.href = destination;
+        window.location.href = nextPath;
       } else {
-        router.push(destination);
+        router.push(nextPath);
       }
     } catch (error) {
       toast.error(getErrorMessage(error, "Verification failed"));

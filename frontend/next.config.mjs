@@ -53,6 +53,14 @@ const nextConfig = {
         destination: `${BACKEND_API_ORIGIN}/api/users/:path*`,
       },
       {
+        source: "/api/topic-videos/:path*",
+        destination: `${BACKEND_API_ORIGIN}/api/topic-videos/:path*`,
+      },
+      {
+        source: "/api/chatbot/:path*",
+        destination: `${BACKEND_API_ORIGIN}/api/chatbot/:path*`,
+      },
+      {
         source: "/uploads/:path*",
         destination: `${BACKEND_API_ORIGIN}/uploads/:path*`,
       },

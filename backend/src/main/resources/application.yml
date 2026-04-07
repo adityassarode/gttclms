@@ -63,3 +63,15 @@ app:
   demo:
     openAccess: ${APP_DEMO_OPEN_ACCESS:true}
     userEmail: ${APP_DEMO_USER_EMAIL:demo@gttc.local}
+
+  azure:
+    face:
+      endpoint: ${APP_AZURE_FACE_ENDPOINT:}
+      apiKey: ${APP_AZURE_FACE_API_KEY:}
+
+  face:
+    qrSessionMinutes: ${APP_FACE_QR_SESSION_MINUTES:10}
+
+  chatbot:
+    rasaWebhookUrl: ${APP_CHATBOT_RASA_WEBHOOK_URL:http://localhost:5005/webhooks/rest/webhook}
+    rasaAuthToken: ${APP_CHATBOT_RASA_AUTH_TOKEN:}

@@ -9,6 +9,7 @@ import {
   Shield,
   Loader2,
   GraduationCap,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -51,6 +52,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function AdminUsersPage() {
   const { user: currentUser } = useAuth();
@@ -62,6 +70,14 @@ export default function AdminUsersPage() {
   const [statusFilter, setStatusFilter] = React.useState("all");
   const [isBanningId, setIsBanningId] = React.useState<ApiId | null>(null);
   const [isDeletingId, setIsDeletingId] = React.useState<ApiId | null>(null);
+  const [isFaceLoadingId, setIsFaceLoadingId] = React.useState<ApiId | null>(
+    null,
+  );
+  const [faceViewerOpen, setFaceViewerOpen] = React.useState(false);
+  const [faceViewer, setFaceViewer] = React.useState<{
+    userName: string;
+    imageUrl: string;
+  } | null>(null);
 
   const loadUsers = React.useCallback(async () => {
     setIsLoading(true);
@@ -78,6 +94,14 @@ export default function AdminUsersPage() {
   React.useEffect(() => {
     loadUsers();
   }, [loadUsers]);
+
+  React.useEffect(() => {
+    return () => {
+      if (faceViewer?.imageUrl) {
+        URL.revokeObjectURL(faceViewer.imageUrl);
+      }
+    };
+  }, [faceViewer]);
 
   const filteredUsers = React.useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -145,6 +169,33 @@ export default function AdminUsersPage() {
       toast.error(getErrorMessage(error, "Unable to delete user"));
     } finally {
       setIsDeletingId(null);
+    }
+  };
+
+  const handleViewFace = async (target: User) => {
+    if (!target.faceImageAvailable) {
+      toast.error("No face image available for this user");
+      return;
+    }
+
+    setIsFaceLoadingId(target.id);
+    try {
+      const { blob } = await api.downloadFaceImageForAdmin(target.id);
+      const objectUrl = URL.createObjectURL(blob);
+      setFaceViewer((current) => {
+        if (current?.imageUrl) {
+          URL.revokeObjectURL(current.imageUrl);
+        }
+        return {
+          userName: target.name,
+          imageUrl: objectUrl,
+        };
+      });
+      setFaceViewerOpen(true);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Unable to load face image"));
+    } finally {
+      setIsFaceLoadingId(null);
     }
   };
 
@@ -277,7 +328,7 @@ export default function AdminUsersPage() {
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="hidden sm:table-cell">
-                    Verified
+                    Verification
                   </TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -300,6 +351,30 @@ export default function AdminUsersPage() {
                         <p className="text-xs text-muted-foreground">
                           {row.email}
                         </p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <Badge
+                            variant={row.faceVerified ? "default" : "outline"}
+                          >
+                            Face {row.faceVerified ? "Verified" : "Pending"}
+                          </Badge>
+                          {row.faceImageAvailable ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewFace(row)}
+                              disabled={isFaceLoadingId === row.id}
+                              className="h-7 px-2 text-xs"
+                            >
+                              {isFaceLoadingId === row.id ? (
+                                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                              ) : (
+                                <Eye className="mr-1 h-3 w-3" />
+                              )}
+                              View Face
+                            </Button>
+                          ) : null}
+                        </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell font-mono text-xs">
                         {row.registerNumber || "-"}
@@ -328,9 +403,16 @@ export default function AdminUsersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        <Badge variant={row.verified ? "default" : "outline"}>
-                          {row.verified ? "Verified" : "Pending"}
-                        </Badge>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant={row.verified ? "default" : "outline"}>
+                            Student {row.verified ? "Verified" : "Pending"}
+                          </Badge>
+                          <Badge
+                            variant={row.faceVerified ? "default" : "outline"}
+                          >
+                            Face {row.faceVerified ? "Verified" : "Pending"}
+                          </Badge>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-2">
@@ -429,6 +511,26 @@ export default function AdminUsersPage() {
           ) : null}
         </CardContent>
       </Card>
+
+      <Dialog open={faceViewerOpen} onOpenChange={setFaceViewerOpen}>
+        <DialogContent className="max-h-[92vh] max-w-4xl overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Face Verification Image</DialogTitle>
+            <DialogDescription>
+              {faceViewer?.userName || "Selected user"}
+            </DialogDescription>
+          </DialogHeader>
+          {faceViewer?.imageUrl ? (
+            <img
+              src={faceViewer.imageUrl}
+              alt={`Face verification for ${faceViewer.userName}`}
+              className="h-auto w-full rounded-lg border border-border/60 bg-black/5 object-contain"
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">No image selected.</p>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
