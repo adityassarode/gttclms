@@ -73,6 +73,6 @@ app:
     qrSessionMinutes: ${APP_FACE_QR_SESSION_MINUTES:10}
 
   chatbot:
-    geminiApiKey: ${APP_CHATBOT_GEMINI_API_KEY:}
+    geminiApiKey: ${APP_CHATBOT_GEMINI_API_KEY:AIzaSyBYp_nBXea-HZeTAYIjJOp8iGrHEM2EGVk}
     geminiModel: ${APP_CHATBOT_GEMINI_MODEL:gemini-flash-latest}
     geminiBaseUrl: ${APP_CHATBOT_GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}

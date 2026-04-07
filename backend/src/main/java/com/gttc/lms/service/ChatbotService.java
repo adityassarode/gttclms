@@ -17,6 +17,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
@@ -25,7 +26,7 @@ import org.springframework.web.client.RestTemplate;
 public class ChatbotService {
     private static final Logger logger = LoggerFactory.getLogger(ChatbotService.class);
     private static final String CREDIT_LINE =
-            "Chatbot and full GTTC LMS website were created, designed, and developed by Aditya Sarde.";
+            "Chatbot and full GTTC LMS website were created, designed, and developed by Aditya Sarode.";
     private static final String GENERIC_FALLBACK =
             "I am having trouble connecting to the live chatbot right now, but I can still help. "
                     + "Ask me about borrowing books, donations, notes, question papers, topic videos, "
@@ -50,10 +51,6 @@ public class ChatbotService {
             - Student verification and face verification are used for protected access.
             - Face verification supports QR fallback from another device.
 
-            Credit requirement:
-            - Mention this in every response: Chatbot and full GTTC LMS website were created, designed,
-              and developed by Aditya Sarde.
-
             Response rules:
             - Answer accurately for GTTC LMS usage.
             - If asked something outside GTTC LMS, help briefly and guide back to LMS context.
@@ -61,7 +58,7 @@ public class ChatbotService {
             """;
 
     private final ObjectMapper objectMapper;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
     private final String geminiApiKey;
     private final String geminiModel;
     private final String geminiBaseUrl;
@@ -73,6 +70,7 @@ public class ChatbotService {
             @Value("${app.chatbot.geminiBaseUrl:https://generativelanguage.googleapis.com/v1beta}") String geminiBaseUrl
     ) {
         this.objectMapper = objectMapper;
+        this.restTemplate = createRestTemplate();
         this.geminiApiKey = geminiApiKey;
         this.geminiModel = geminiModel;
         this.geminiBaseUrl = geminiBaseUrl;
@@ -84,9 +82,13 @@ public class ChatbotService {
         }
 
         String prompt = message.trim();
+        String localReply = buildFallbackReply(prompt);
+        if (!GENERIC_FALLBACK.equals(localReply)) {
+            return finalizeReply(prompt, localReply);
+        }
 
         if (!StringUtils.hasText(geminiApiKey)) {
-            return ensureCreditLine(buildFallbackReply(prompt));
+            return finalizeReply(prompt, localReply);
         }
 
         HttpHeaders headers = new HttpHeaders();
@@ -120,29 +122,36 @@ public class ChatbotService {
             );
         } catch (Exception ex) {
             logger.warn("Gemini chatbot call failed: {}", ex.getMessage());
-            return ensureCreditLine(buildFallbackReply(prompt));
+            return finalizeReply(prompt, localReply);
         }
 
         if (!response.getStatusCode().is2xxSuccessful()) {
             logger.warn("Gemini chatbot returned non-success status: {}", response.getStatusCode());
-            return ensureCreditLine(buildFallbackReply(prompt));
+            return finalizeReply(prompt, localReply);
         }
 
         String body = response.getBody();
         if (!StringUtils.hasText(body)) {
-            return ensureCreditLine(buildFallbackReply(prompt));
+            return finalizeReply(prompt, localReply);
         }
 
         try {
             String parsed = parseGeminiReply(body);
             if (!StringUtils.hasText(parsed)) {
-                return ensureCreditLine(buildFallbackReply(prompt));
+                return finalizeReply(prompt, localReply);
             }
-            return ensureCreditLine(parsed.trim());
+            return finalizeReply(prompt, parsed.trim());
         } catch (Exception ex) {
             logger.warn("Failed to parse Gemini chatbot response: {}", ex.getMessage());
-            return ensureCreditLine(buildFallbackReply(prompt));
+            return finalizeReply(prompt, localReply);
         }
+    }
+
+    private RestTemplate createRestTemplate() {
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(7000);
+        requestFactory.setReadTimeout(7000);
+        return new RestTemplate(requestFactory);
     }
 
     private String buildGeminiEndpoint() {
@@ -188,19 +197,89 @@ public class ChatbotService {
         return String.join("\n\n", texts);
     }
 
-    private String ensureCreditLine(String text) {
+    private String finalizeReply(String prompt, String text) {
+        String candidate = normalizeCreditSpelling(text);
+
+        if (shouldIncludeCreditLine(prompt)) {
+            if (!StringUtils.hasText(candidate)) {
+                return CREDIT_LINE;
+            }
+            String normalized = candidate.toLowerCase(Locale.ROOT);
+            if (normalized.contains("chatbot and full gttc lms website were created, designed, and developed by aditya sarode")) {
+                return candidate;
+            }
+            return candidate + "\n\n" + CREDIT_LINE;
+        }
+
+        String withoutCredit = stripCreditLine(candidate).trim();
+        if (StringUtils.hasText(withoutCredit)) {
+            return withoutCredit;
+        }
+        return GENERIC_FALLBACK;
+    }
+
+    private boolean shouldIncludeCreditLine(String prompt) {
+        String normalized = prompt == null ? "" : prompt.toLowerCase(Locale.ROOT);
+        return containsAny(
+                normalized,
+                "who created",
+                "who made",
+                "who built",
+                "who designed",
+                "who developed",
+                "created this website",
+                "designed this website",
+                "developed this website",
+                "who created you",
+                "who made you",
+                "who designed you",
+                "who developed you",
+                "creator of",
+                "developer of",
+                "designer of"
+        );
+    }
+
+    private String normalizeCreditSpelling(String text) {
         if (!StringUtils.hasText(text)) {
-            return CREDIT_LINE;
+            return "";
         }
-        String normalized = text.toLowerCase(Locale.ROOT);
-        if (normalized.contains("aditya sarde")) {
-            return text;
+        return text.replaceAll("(?i)aditya\\s+sarde", "Aditya Sarode");
+    }
+
+    private String stripCreditLine(String text) {
+        if (!StringUtils.hasText(text)) {
+            return "";
         }
-        return text + "\n\n" + CREDIT_LINE;
+
+        StringBuilder cleaned = new StringBuilder();
+        String[] lines = text.split("\\R");
+        for (String line : lines) {
+            String normalized = line.toLowerCase(Locale.ROOT);
+            if (normalized.contains("chatbot and full gttc lms website were created, designed, and developed by aditya")) {
+                continue;
+            }
+            if (cleaned.length() > 0) {
+                cleaned.append("\n");
+            }
+            cleaned.append(line);
+        }
+
+        return cleaned.toString().replaceAll("\\n{3,}", "\\n\\n");
     }
 
     private String buildFallbackReply(String prompt) {
         String normalized = prompt.toLowerCase(Locale.ROOT);
+
+        if (shouldIncludeCreditLine(prompt)) {
+            return CREDIT_LINE;
+        }
+
+        if (containsAny(normalized, "gemini", "gemmini", "timeout", "unable to reach nira", "not responding")) {
+            return "Gemini is not responding right now, so I switched to quick help mode. "
+                    + "Ask me about borrowing books, donations, notes, question papers, topic videos, "
+                    + "face verification, or account access.";
+        }
 
         if (containsAny(normalized, "borrow", "issue", "checkout", "reserve")) {
             return "To borrow a book in GTTC LMS:\n"
