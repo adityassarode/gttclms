@@ -1,6 +1,11 @@
-# Rasa Setup (Nira Chatbot)
+# Legacy Rasa Starter (Nira Chatbot)
 
 This folder contains starter Rasa training data for the GTTC LMS chatbot named Nira.
+
+Runtime note:
+
+- The live backend chatbot integration now uses Gemini API through Spring Boot.
+- This Rasa folder is optional reference/training data and is not required for normal runtime.
 
 ## Files
 
@@ -16,11 +21,8 @@ rasa train
 rasa run --enable-api --cors "*"
 ```
 
-Default webhook endpoint used by backend:
-
-`http://localhost:5005/webhooks/rest/webhook`
-
 Set backend environment variables:
 
-- `APP_CHATBOT_RASA_WEBHOOK_URL`
-- `APP_CHATBOT_RASA_AUTH_TOKEN` (optional)
+- `APP_CHATBOT_GEMINI_API_KEY`
+- `APP_CHATBOT_GEMINI_MODEL` (optional, default: `gemini-flash-latest`)
+- `APP_CHATBOT_GEMINI_BASE_URL` (optional, default: `https://generativelanguage.googleapis.com/v1beta`)

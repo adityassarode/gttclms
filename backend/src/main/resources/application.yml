@@ -73,5 +73,6 @@ app:
     qrSessionMinutes: ${APP_FACE_QR_SESSION_MINUTES:10}
 
   chatbot:
-    rasaWebhookUrl: ${APP_CHATBOT_RASA_WEBHOOK_URL:http://localhost:5005/webhooks/rest/webhook}
-    rasaAuthToken: ${APP_CHATBOT_RASA_AUTH_TOKEN:}
+    geminiApiKey: ${APP_CHATBOT_GEMINI_API_KEY:}
+    geminiModel: ${APP_CHATBOT_GEMINI_MODEL:gemini-flash-latest}
+    geminiBaseUrl: ${APP_CHATBOT_GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}

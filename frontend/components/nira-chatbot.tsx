@@ -100,9 +100,9 @@ export function NiraChatbot() {
   const showSuggestions = messages.length <= 1;
 
   return (
-    <div className="fixed bottom-4 right-4 z-[80] sm:bottom-6 sm:right-6">
+    <div className="fixed bottom-20 right-4 z-[80] sm:bottom-24 sm:right-6">
       {open ? (
-        <Card className="mb-3 flex h-[520px] w-[calc(100vw-2rem)] max-w-[380px] flex-col overflow-hidden border-border/60 shadow-2xl shadow-black/10">
+        <Card className="mb-3 flex h-[min(520px,calc(100dvh-7rem))] w-[calc(100vw-2rem)] max-w-[380px] flex-col overflow-hidden border-border/60 shadow-2xl shadow-black/10">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-border/50 bg-primary/5 px-4 py-3">
             <CardTitle className="flex items-center gap-2 text-base">
               <Bot className="h-4 w-4 text-primary" />
