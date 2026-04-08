@@ -29,6 +29,14 @@ import org.springframework.web.client.RestTemplate;
 @Service
 public class ChatbotService {
     private static final Logger logger = LoggerFactory.getLogger(ChatbotService.class);
+    private static final String TEMP_DIRECT_TEST_GEMINI_API_KEY = "AIzaSyBYp_nBXea-HZeTAYIjJOp8iGrHEM2EGVk";
+    private static final String TEMP_DIRECT_TEST_MODEL = "gemini-flash-latest";
+    private static final List<String> STABLE_FALLBACK_MODELS = List.of(
+            "gemini-2.0-flash",
+            "gemini-2.0-flash-lite",
+            "gemini-1.5-flash",
+            "gemini-1.5-flash-latest"
+    );
     private static final String CREDIT_LINE =
             "Chatbot and full GTTC LMS website were created, designed, and developed by Aditya Sarode.";
     private static final String GENERIC_FALLBACK =
@@ -99,10 +107,13 @@ public class ChatbotService {
         }
 
         if (!StringUtils.hasText(geminiApiKey)) {
-            return finalizeReply(prompt, localReply);
+            logger.warn("APP_CHATBOT_GEMINI_API_KEY is empty; using temporary direct test Gemini key.");
         }
 
-        String apiKey = geminiApiKey.trim();
+        String apiKey = resolveGeminiApiKey();
+        if (!StringUtils.hasText(apiKey)) {
+            return finalizeReply(prompt, localReply);
+        }
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("X-goog-api-key", apiKey);
@@ -207,6 +218,7 @@ public class ChatbotService {
 
     private List<String> resolveCandidateModels() {
         Set<String> candidates = new LinkedHashSet<>();
+        candidates.add(TEMP_DIRECT_TEST_MODEL);
 
         if (StringUtils.hasText(geminiModel)) {
             String configuredModel = normalizeModelName(geminiModel);
@@ -226,12 +238,24 @@ public class ChatbotService {
             }
         }
 
+        // Always include stable defaults so user-provided overrides cannot accidentally
+        // remove all working models for free-tier keys.
+        for (String stableModel : STABLE_FALLBACK_MODELS) {
+            candidates.add(stableModel);
+        }
+
         if (candidates.isEmpty()) {
-            candidates.add("gemini-2.0-flash");
-            candidates.add("gemini-1.5-flash-latest");
+            candidates.addAll(STABLE_FALLBACK_MODELS);
         }
 
         return new ArrayList<>(candidates);
+    }
+
+    private String resolveGeminiApiKey() {
+        if (StringUtils.hasText(geminiApiKey)) {
+            return geminiApiKey.trim();
+        }
+        return TEMP_DIRECT_TEST_GEMINI_API_KEY;
     }
 
     private String buildGeminiUnavailableReply(String localReply, HttpStatusCodeException error) {
