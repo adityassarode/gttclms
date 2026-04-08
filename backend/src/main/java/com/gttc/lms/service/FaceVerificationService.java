@@ -25,6 +25,7 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Iterator;
+import java.util.Locale;
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageWriteParam;
@@ -37,8 +38,11 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 @Service
@@ -50,7 +54,7 @@ public class FaceVerificationService {
     private final UserFaceVerificationRepository userFaceVerificationRepository;
     private final FaceVerificationSessionRepository faceVerificationSessionRepository;
     private final ObjectMapper objectMapper;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
     private final SecureRandom secureRandom = new SecureRandom();
 
     private final String faceEndpoint;
@@ -65,6 +69,8 @@ public class FaceVerificationService {
             ObjectMapper objectMapper,
             @Value("${app.azure.face.endpoint:}") String faceEndpoint,
             @Value("${app.azure.face.apiKey:}") String faceApiKey,
+            @Value("${app.azure.face.connectTimeoutMs:7000}") int faceConnectTimeoutMs,
+            @Value("${app.azure.face.readTimeoutMs:15000}") int faceReadTimeoutMs,
             @Value("${app.face.qrSessionMinutes:10}") int sessionTtlMinutes,
             @Value("${app.frontendUrls:http://localhost:3000}") String frontendUrls
     ) {
@@ -72,10 +78,18 @@ public class FaceVerificationService {
         this.userFaceVerificationRepository = userFaceVerificationRepository;
         this.faceVerificationSessionRepository = faceVerificationSessionRepository;
         this.objectMapper = objectMapper;
+        this.restTemplate = createFaceApiRestTemplate(faceConnectTimeoutMs, faceReadTimeoutMs);
         this.faceEndpoint = faceEndpoint;
         this.faceApiKey = faceApiKey;
         this.sessionTtlMinutes = sessionTtlMinutes;
         this.frontendUrls = frontendUrls;
+    }
+
+    private RestTemplate createFaceApiRestTemplate(int connectTimeoutMs, int readTimeoutMs) {
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(Math.max(1000, connectTimeoutMs));
+        requestFactory.setReadTimeout(Math.max(1000, readTimeoutMs));
+        return new RestTemplate(requestFactory);
     }
 
     @Transactional
@@ -194,16 +208,7 @@ public class FaceVerificationService {
             );
         }
 
-        String endpoint = faceEndpoint.trim();
-        if (endpoint.endsWith("/")) {
-            endpoint = endpoint.substring(0, endpoint.length() - 1);
-        }
-
-        String requestUrl = endpoint
-                + "/face/v1.0/detect"
-                + "?returnFaceId=false"
-                + "&returnFaceLandmarks=false"
-                + "&returnFaceAttributes=qualityForRecognition,blur,occlusion";
+        String requestUrl = buildFaceDetectUrl();
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("Ocp-Apim-Subscription-Key", faceApiKey.trim());
@@ -217,6 +222,11 @@ public class FaceVerificationService {
                     new HttpEntity<>(imageBytes, headers),
                     String.class
             );
+        } catch (HttpStatusCodeException ex) {
+            throw toAzureApiException(ex);
+        } catch (ResourceAccessException ex) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY,
+                    "Azure Face API timed out. Please try again with better network.");
         } catch (Exception ex) {
             throw new ApiException(HttpStatus.BAD_GATEWAY, "Azure Face API request failed");
         }
@@ -262,6 +272,68 @@ public class FaceVerificationService {
             throw ex;
         } catch (Exception ex) {
             throw new ApiException(HttpStatus.BAD_GATEWAY, "Unable to parse Azure Face API response");
+        }
+    }
+
+    private String buildFaceDetectUrl() {
+        String endpoint = faceEndpoint == null ? "" : faceEndpoint.trim();
+        endpoint = endpoint.replaceAll("/+$", "");
+
+        String lowerEndpoint = endpoint.toLowerCase(Locale.ROOT);
+        if (lowerEndpoint.endsWith("/face/v1.0")) {
+            endpoint = endpoint.substring(0, endpoint.length() - "/face/v1.0".length());
+        }
+
+        return endpoint
+                + "/face/v1.0/detect"
+                + "?returnFaceId=false"
+                + "&returnFaceLandmarks=false"
+                + "&returnFaceAttributes=qualityForRecognition,blur,occlusion"
+                + "&detectionModel=detection_03";
+    }
+
+    private ApiException toAzureApiException(HttpStatusCodeException exception) {
+        HttpStatus status = HttpStatus.BAD_GATEWAY;
+        String parsedMessage = parseAzureErrorMessage(exception.getResponseBodyAsString());
+
+        if (exception.getStatusCode().value() == 401 || exception.getStatusCode().value() == 403) {
+            return new ApiException(status,
+                    "Azure Face API authentication failed. Check face endpoint and API key.");
+        }
+
+        if (exception.getStatusCode().value() == 404) {
+            return new ApiException(status,
+                    "Azure Face API endpoint not found. Verify APP_AZURE_FACE_ENDPOINT format.");
+        }
+
+        if (exception.getStatusCode().value() == 429) {
+            return new ApiException(status,
+                    "Azure Face API rate limit exceeded. Please wait a moment and try again.");
+        }
+
+        if (StringUtils.hasText(parsedMessage)) {
+            return new ApiException(status, "Azure Face API error: " + parsedMessage);
+        }
+
+        return new ApiException(status, "Azure Face API request failed");
+    }
+
+    private String parseAzureErrorMessage(String responseBody) {
+        if (!StringUtils.hasText(responseBody)) {
+            return "";
+        }
+
+        try {
+            JsonNode root = objectMapper.readTree(responseBody);
+            String errorMessage = root.path("error").path("message").asText("");
+            if (StringUtils.hasText(errorMessage)) {
+                return errorMessage.trim();
+            }
+
+            String rootMessage = root.path("message").asText("");
+            return StringUtils.hasText(rootMessage) ? rootMessage.trim() : "";
+        } catch (Exception ignored) {
+            return "";
         }
     }
 

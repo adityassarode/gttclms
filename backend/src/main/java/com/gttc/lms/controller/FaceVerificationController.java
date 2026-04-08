@@ -44,27 +44,30 @@ public class FaceVerificationController {
             Authentication authentication,
             @Valid @RequestBody FaceVerificationRequest request
     ) {
-        User user = null;
-        boolean hasAuthenticatedPrincipal = principal instanceof User || authentication instanceof JwtAuthenticationToken;
-
-        if (hasAuthenticatedPrincipal) {
-            user = currentUserResolver.resolve(principal, authentication);
-        }
-
         User updated;
-        if (user != null) {
-            updated = faceVerificationService.verifyAuthenticatedUser(
-                    user,
-                    request.getImageDataUrl(),
-                    request.getSessionToken()
-            );
-        } else {
-            if (request.getSessionToken() == null || request.getSessionToken().isBlank()) {
-                throw new ApiException(HttpStatus.UNAUTHORIZED, "Authentication required");
-            }
+        boolean hasSessionToken = request.getSessionToken() != null && !request.getSessionToken().isBlank();
+
+        if (hasSessionToken) {
             updated = faceVerificationService.verifyUsingSessionToken(
                     request.getSessionToken(),
                     request.getImageDataUrl()
+            );
+        } else {
+            User user = null;
+            boolean hasAuthenticatedPrincipal = principal instanceof User || authentication instanceof JwtAuthenticationToken;
+
+            if (hasAuthenticatedPrincipal) {
+                user = currentUserResolver.resolve(principal, authentication);
+            }
+
+            if (user == null) {
+                throw new ApiException(HttpStatus.UNAUTHORIZED, "Authentication required");
+            }
+
+            updated = faceVerificationService.verifyAuthenticatedUser(
+                    user,
+                    request.getImageDataUrl(),
+                    null
             );
         }
 

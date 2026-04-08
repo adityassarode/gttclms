@@ -20,6 +20,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 @Service
@@ -62,15 +64,19 @@ public class ChatbotService {
     private final String geminiApiKey;
     private final String geminiModel;
     private final String geminiBaseUrl;
+    private final int geminiReadTimeoutMs;
 
     public ChatbotService(
             ObjectMapper objectMapper,
             @Value("${app.chatbot.geminiApiKey:}") String geminiApiKey,
             @Value("${app.chatbot.geminiModel:gemini-flash-latest}") String geminiModel,
-            @Value("${app.chatbot.geminiBaseUrl:https://generativelanguage.googleapis.com/v1beta}") String geminiBaseUrl
+            @Value("${app.chatbot.geminiBaseUrl:https://generativelanguage.googleapis.com/v1beta}") String geminiBaseUrl,
+            @Value("${app.chatbot.connectTimeoutMs:10000}") int geminiConnectTimeoutMs,
+            @Value("${app.chatbot.readTimeoutMs:45000}") int geminiReadTimeoutMs
     ) {
         this.objectMapper = objectMapper;
-        this.restTemplate = createRestTemplate();
+        this.geminiReadTimeoutMs = geminiReadTimeoutMs;
+        this.restTemplate = createRestTemplate(geminiConnectTimeoutMs, geminiReadTimeoutMs);
         this.geminiApiKey = geminiApiKey;
         this.geminiModel = geminiModel;
         this.geminiBaseUrl = geminiBaseUrl;
@@ -120,6 +126,16 @@ public class ChatbotService {
                     new HttpEntity<>(payload, headers),
                     String.class
             );
+        } catch (ResourceAccessException ex) {
+            logger.warn("Gemini chatbot timed out after {}ms read timeout", Math.max(1000, geminiReadTimeoutMs));
+            return finalizeReply(prompt, buildGeminiTimeoutReply(localReply));
+        } catch (HttpStatusCodeException ex) {
+            logger.warn(
+                    "Gemini chatbot returned status {} with body: {}",
+                    ex.getStatusCode().value(),
+                    ex.getResponseBodyAsString()
+            );
+            return finalizeReply(prompt, localReply);
         } catch (Exception ex) {
             logger.warn("Gemini chatbot call failed: {}", ex.getMessage());
             return finalizeReply(prompt, localReply);
@@ -147,11 +163,20 @@ public class ChatbotService {
         }
     }
 
-    private RestTemplate createRestTemplate() {
+    private RestTemplate createRestTemplate(int connectTimeoutMs, int readTimeoutMs) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(7000);
-        requestFactory.setReadTimeout(7000);
+        requestFactory.setConnectTimeout(Math.max(1000, connectTimeoutMs));
+        requestFactory.setReadTimeout(Math.max(1000, readTimeoutMs));
         return new RestTemplate(requestFactory);
+    }
+
+    private String buildGeminiTimeoutReply(String localReply) {
+        if (!GENERIC_FALLBACK.equals(localReply)) {
+            return localReply;
+        }
+
+        return "Gemini is taking too long to respond right now, so I switched to quick help mode. "
+                + "Ask one short question about GTTC LMS and I will answer immediately.";
     }
 
     private String buildGeminiEndpoint() {

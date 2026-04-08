@@ -43,6 +43,7 @@ import { supabase } from "@/lib/supabase";
 
 const REQUEST_TIMEOUT_MS = 20000;
 const LOOKUP_REQUEST_TIMEOUT_MS = 15000;
+const CHATBOT_REQUEST_TIMEOUT_MS = 50000;
 const PUBLIC_GET_CACHE_TTL_MS = 15000;
 const TOKEN_CACHE_TTL_MS = 2500;
 const AUTH_ME_CACHE_TTL_MS = 1500;
@@ -1381,6 +1382,8 @@ export const api = {
   },
 
   verifyFace(payload: FaceVerificationPayload) {
+    const hasSessionToken = Boolean(payload.sessionToken?.trim());
+
     return request<User>(
       "/api/users/face/verify",
       {
@@ -1388,6 +1391,8 @@ export const api = {
         body: JSON.stringify(payload),
       },
       "Unable to verify face",
+      undefined,
+      !hasSessionToken,
     ).then((profile) => {
       meCachedProfile = {
         value: profile,
@@ -1425,17 +1430,39 @@ export const api = {
     );
   },
 
-  sendChatbotMessage(payload: ChatbotMessagePayload) {
-    return request<ChatbotMessageResponse>(
-      "/api/chatbot/message",
-      {
-        method: "POST",
-        body: JSON.stringify(payload),
-      },
-      "Unable to reach Nira",
-      undefined,
-      false,
-    );
+  async sendChatbotMessage(payload: ChatbotMessagePayload) {
+    try {
+      return await request<ChatbotMessageResponse>(
+        "/api/chatbot/message",
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+        "Unable to reach Nira",
+        undefined,
+        false,
+        undefined,
+        CHATBOT_REQUEST_TIMEOUT_MS,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message.toLowerCase() : "";
+      if (!message.includes("timeout")) {
+        throw error;
+      }
+
+      return request<ChatbotMessageResponse>(
+        "/api/chatbot/message",
+        {
+          method: "POST",
+          body: JSON.stringify(payload),
+        },
+        "Unable to reach Nira",
+        undefined,
+        false,
+        undefined,
+        CHATBOT_REQUEST_TIMEOUT_MS,
+      );
+    }
   },
 };
 
