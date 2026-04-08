@@ -4,11 +4,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "user_face_verifications")
@@ -21,8 +22,8 @@ public class UserFaceVerification {
     @Column(name = "app_user_id", nullable = false, unique = true)
     private Long appUserId;
 
-    @Lob
-    @Column(name = "image_data", nullable = false)
+    @JdbcTypeCode(SqlTypes.BINARY)
+    @Column(name = "image_data", nullable = false, columnDefinition = "bytea")
     private byte[] imageData;
 
     @Column(name = "image_mime_type", nullable = false)

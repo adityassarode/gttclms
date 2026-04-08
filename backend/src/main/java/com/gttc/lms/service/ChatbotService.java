@@ -10,8 +10,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -104,8 +102,10 @@ public class ChatbotService {
             return finalizeReply(prompt, localReply);
         }
 
+        String apiKey = geminiApiKey.trim();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("X-goog-api-key", apiKey);
 
         String sender = StringUtils.hasText(senderId) ? senderId.trim() : "guest";
         String modelPrompt = buildModelPrompt(prompt, sender);
@@ -125,14 +125,13 @@ public class ChatbotService {
         payload.put("generationConfig", generationConfig);
 
         List<String> candidateModels = resolveCandidateModels();
-        String apiKey = geminiApiKey.trim();
         HttpStatusCodeException lastHttpError = null;
 
         for (String model : candidateModels) {
             ResponseEntity<String> response;
             try {
                 response = restTemplate.exchange(
-                        buildGeminiEndpoint(model, apiKey),
+                    buildGeminiEndpoint(model),
                         HttpMethod.POST,
                         new HttpEntity<>(payload, headers),
                         String.class
@@ -193,38 +192,43 @@ public class ChatbotService {
                 + "Ask one short question about GTTC LMS and I will answer immediately.";
     }
 
-    private String buildGeminiEndpoint(String model, String apiKey) {
+        private String buildGeminiEndpoint(String model) {
         String base = StringUtils.hasText(geminiBaseUrl)
                 ? geminiBaseUrl.trim()
                 : "https://generativelanguage.googleapis.com/v1beta";
         String normalizedModel = StringUtils.hasText(model)
-                ? model.trim()
+                ? normalizeModelName(model)
                 : "gemini-2.0-flash";
         return base.replaceAll("/+$", "")
                 + "/models/"
-                + URLEncoder.encode(normalizedModel, StandardCharsets.UTF_8)
-                + ":generateContent?key="
-                + URLEncoder.encode(apiKey, StandardCharsets.UTF_8);
+            + normalizedModel
+            + ":generateContent";
     }
 
     private List<String> resolveCandidateModels() {
         Set<String> candidates = new LinkedHashSet<>();
 
         if (StringUtils.hasText(geminiModel)) {
-            candidates.add(geminiModel.trim());
+            String configuredModel = normalizeModelName(geminiModel);
+            candidates.add(configuredModel);
+            if ("gemini-flash-latest".equalsIgnoreCase(configuredModel)) {
+                candidates.add("gemini-1.5-flash-latest");
+                candidates.add("gemini-1.5-flash");
+            }
         }
 
         if (StringUtils.hasText(geminiFallbackModels)) {
             for (String fallback : geminiFallbackModels.split(",")) {
                 String trimmed = fallback == null ? "" : fallback.trim();
                 if (!trimmed.isEmpty()) {
-                    candidates.add(trimmed);
+                    candidates.add(normalizeModelName(trimmed));
                 }
             }
         }
 
         if (candidates.isEmpty()) {
             candidates.add("gemini-2.0-flash");
+            candidates.add("gemini-1.5-flash-latest");
         }
 
         return new ArrayList<>(candidates);
@@ -235,15 +239,63 @@ public class ChatbotService {
             return localReply;
         }
 
+        String errorMessage = error == null ? "" : parseGeminiErrorMessage(error.getResponseBodyAsString());
+
         if (error != null && (error.getStatusCode().value() == 401 || error.getStatusCode().value() == 403)) {
             return "Gemini API key is invalid or not authorized. Please update APP_CHATBOT_GEMINI_API_KEY.";
+        }
+
+        if (error != null && error.getStatusCode().value() == 400) {
+            String lower = errorMessage.toLowerCase(Locale.ROOT);
+            if (lower.contains("api key") && lower.contains("invalid")) {
+                return "Gemini API key looks invalid. Please update APP_CHATBOT_GEMINI_API_KEY.";
+            }
+            if (lower.contains("model") && (lower.contains("not found") || lower.contains("unknown"))) {
+                return "Gemini model is not supported for this key. Set APP_CHATBOT_GEMINI_MODEL to gemini-1.5-flash-latest.";
+            }
+            if (StringUtils.hasText(errorMessage)) {
+                return "Gemini API error: " + errorMessage;
+            }
+        }
+
+        if (error != null && error.getStatusCode().value() == 404) {
+            return "Gemini model endpoint not found. Set APP_CHATBOT_GEMINI_MODEL to gemini-1.5-flash-latest.";
         }
 
         if (error != null && error.getStatusCode().value() == 429) {
             return "Gemini rate limit exceeded. Please wait a moment and try again.";
         }
 
+        if (StringUtils.hasText(errorMessage)) {
+            return "Gemini API error: " + errorMessage;
+        }
+
         return GENERIC_FALLBACK;
+    }
+
+    private String normalizeModelName(String model) {
+        String trimmed = model == null ? "" : model.trim();
+        if (trimmed.toLowerCase(Locale.ROOT).startsWith("models/")) {
+            return trimmed.substring("models/".length());
+        }
+        return trimmed;
+    }
+
+    private String parseGeminiErrorMessage(String body) {
+        if (!StringUtils.hasText(body)) {
+            return "";
+        }
+
+        try {
+            JsonNode root = objectMapper.readTree(body);
+            String message = root.path("error").path("message").asText("");
+            if (StringUtils.hasText(message)) {
+                return message.trim();
+            }
+            return root.path("message").asText("").trim();
+        } catch (Exception ignored) {
+            return "";
+        }
     }
 
     private String buildModelPrompt(String userPrompt, String sender) {
@@ -258,6 +310,10 @@ public class ChatbotService {
         JsonNode root = objectMapper.readTree(body);
         JsonNode candidates = root.path("candidates");
         if (!candidates.isArray() || candidates.isEmpty()) {
+            String blockReason = root.path("promptFeedback").path("blockReason").asText("");
+            if (StringUtils.hasText(blockReason)) {
+                return "Gemini blocked this request (" + blockReason + "). Please rephrase and try again.";
+            }
             return "";
         }
 
