@@ -5,8 +5,13 @@
 - Runtime: Java
 - Root directory: backend
 - Build command: mvn clean package -DskipTests
-- Start command: java -jar target/gttc-lms-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
+- Start command (recommended for GitHub jar deploy): java -jar /home/site/wwwroot/gttc-lms-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
 - Health check path: /health
+
+Note:
+
+- If you deploy source and build on App Service, `target/gttc-lms-0.0.1-SNAPSHOT.jar` can be valid.
+- If you deploy a jar artifact (GitHub Action `azure/webapps-deploy`), use `/home/site/wwwroot/gttc-lms-0.0.1-SNAPSHOT.jar`.
 
 CI/CD deployment is configured via the GitHub Actions workflow in .github/workflows/main_gttclms.yml.
 
@@ -48,5 +53,3 @@ If project refs differ between frontend and backend, authenticated requests retu
 ## Local + production env template
 
 - backend/.env.example
-
-

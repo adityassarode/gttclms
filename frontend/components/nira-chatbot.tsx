@@ -26,6 +26,72 @@ const SUGGESTED_QUESTIONS = [
   "How do student verification and face verification work?",
 ];
 
+const BOTPRESS_INJECT_SCRIPT_ID = "gttc-botpress-inject";
+const BOTPRESS_BOT_SCRIPT_ID = "gttc-botpress-bot";
+const BOTPRESS_INJECT_SRC = "https://cdn.botpress.cloud/webchat/v3.6/inject.js";
+const BOTPRESS_BOT_SRC =
+  "https://files.bpcontent.cloud/2026/04/07/18/20260407181701-92MKIP0J.js";
+
+function shouldSwitchToBotpress(message: string) {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("gemini rate limit exceeded") ||
+    normalized.includes("gemini model endpoint not found") ||
+    normalized.includes("gemini api key") ||
+    normalized.includes("gemini api error") ||
+    normalized.includes("i am having trouble connecting to the live chatbot") ||
+    normalized.includes("unable to reach nira")
+  );
+}
+
+function ensureScript(options: { id: string; src: string; defer?: boolean }) {
+  const { id, src, defer = false } = options;
+
+  return new Promise<void>((resolve, reject) => {
+    const existing = document.getElementById(id) as HTMLScriptElement | null;
+    if (existing) {
+      if (existing.dataset.loaded === "true") {
+        resolve();
+        return;
+      }
+
+      const onLoad = () => {
+        existing.dataset.loaded = "true";
+        existing.removeEventListener("load", onLoad);
+        existing.removeEventListener("error", onError);
+        resolve();
+      };
+
+      const onError = () => {
+        existing.removeEventListener("load", onLoad);
+        existing.removeEventListener("error", onError);
+        reject(new Error(`Unable to load script: ${src}`));
+      };
+
+      existing.addEventListener("load", onLoad);
+      existing.addEventListener("error", onError);
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = id;
+    script.src = src;
+    script.defer = defer;
+    script.async = !defer;
+
+    script.onload = () => {
+      script.dataset.loaded = "true";
+      resolve();
+    };
+
+    script.onerror = () => {
+      reject(new Error(`Unable to load script: ${src}`));
+    };
+
+    document.body.appendChild(script);
+  });
+}
+
 function createMessage(
   role: ChatMessage["role"],
   content: string,
@@ -42,6 +108,8 @@ export function NiraChatbot() {
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [draft, setDraft] = React.useState("");
   const [isSending, setIsSending] = React.useState(false);
+  const [isBotpressLoading, setIsBotpressLoading] = React.useState(false);
+  const [isBotpressActive, setIsBotpressActive] = React.useState(false);
 
   const initializedRef = React.useRef(false);
   const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
@@ -58,6 +126,34 @@ export function NiraChatbot() {
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, open]);
+
+  const switchToBotpress = React.useCallback(async () => {
+    if (isBotpressLoading || isBotpressActive) {
+      return;
+    }
+
+    setIsBotpressLoading(true);
+
+    try {
+      await ensureScript({
+        id: BOTPRESS_INJECT_SCRIPT_ID,
+        src: BOTPRESS_INJECT_SRC,
+      });
+      await ensureScript({
+        id: BOTPRESS_BOT_SCRIPT_ID,
+        src: BOTPRESS_BOT_SRC,
+        defer: true,
+      });
+
+      setIsBotpressActive(true);
+      setOpen(false);
+      toast.success("Switching to Botpress support chat");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Unable to load Botpress chat"));
+    } finally {
+      setIsBotpressLoading(false);
+    }
+  }, [isBotpressActive, isBotpressLoading]);
 
   const sendMessage = React.useCallback(
     async (text: string) => {
@@ -78,26 +174,51 @@ export function NiraChatbot() {
           response.reply?.trim() ||
           "I could not find an answer right now. Please try again.";
 
+        if (shouldSwitchToBotpress(reply)) {
+          setMessages((current) => [
+            ...current,
+            createMessage(
+              "assistant",
+              "Gemini is unavailable right now. Switching you to Botpress support chat.",
+            ),
+          ]);
+          void switchToBotpress();
+          return;
+        }
+
         setMessages((current) => [
           ...current,
           createMessage("assistant", reply),
         ]);
       } catch (error) {
-        const fallback =
-          "I am having trouble connecting right now. Please try again in a moment.";
+        const errorMessage = getErrorMessage(error, "Unable to reach Nira");
+        const shouldSwitch = shouldSwitchToBotpress(errorMessage);
+        const fallback = shouldSwitch
+          ? "Gemini is unavailable right now. Switching you to Botpress support chat."
+          : "I am having trouble connecting right now. Please try again in a moment.";
+
         setMessages((current) => [
           ...current,
           createMessage("assistant", fallback),
         ]);
-        toast.error(getErrorMessage(error, "Unable to reach Nira"));
+
+        if (shouldSwitch) {
+          void switchToBotpress();
+        } else {
+          toast.error(errorMessage);
+        }
       } finally {
         setIsSending(false);
       }
     },
-    [isSending],
+    [isSending, switchToBotpress],
   );
 
   const showSuggestions = messages.length <= 1;
+
+  if (isBotpressActive) {
+    return null;
+  }
 
   return (
     <div className="fixed bottom-20 right-4 z-[80] sm:bottom-24 sm:right-6">
@@ -198,9 +319,14 @@ export function NiraChatbot() {
         size="lg"
         className="h-14 rounded-full px-5 shadow-xl shadow-primary/20"
         onClick={() => setOpen(true)}
+        disabled={isBotpressLoading}
       >
-        <MessageCircle className="mr-2 h-5 w-5" />
-        Chat with Nira
+        {isBotpressLoading ? (
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+        ) : (
+          <MessageCircle className="mr-2 h-5 w-5" />
+        )}
+        {isBotpressLoading ? "Switching..." : "Chat with Nira"}
       </Button>
     </div>
   );

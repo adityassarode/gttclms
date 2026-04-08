@@ -26,13 +26,22 @@ jobs:
 
       - name: Build with Maven
         working-directory: backend
-        run: mvn clean package -DskipTests
+        run: |
+          set -e
+          mvn -B -U clean package -DskipTests
+          JAR_PATH="target/gttc-lms-0.0.1-SNAPSHOT.jar"
+          test -f "$JAR_PATH"
+
+          # Verify this is a repackaged Spring Boot fat jar with runtime libs.
+          jar tf "$JAR_PATH" | grep -q "BOOT-INF/lib/spring-orm-"
+          jar tf "$JAR_PATH" | grep -q "BOOT-INF/lib/hibernate-core-"
+          jar tf "$JAR_PATH" | grep -q "BOOT-INF/lib/jackson-databind-"
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: java-app
-          path: "${{ github.workspace }}/backend/target/*.jar"
+          path: "${{ github.workspace }}/backend/target/gttc-lms-0.0.1-SNAPSHOT.jar"
 
   deploy:
     runs-on: ubuntu-latest
@@ -43,6 +52,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: java-app
+          path: artifact
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
@@ -50,5 +60,6 @@ jobs:
         with:
           app-name: "gttclms"
           slot-name: "Production"
-          package: "*.jar"
+          package: "artifact/gttc-lms-0.0.1-SNAPSHOT.jar"
+          startup-command: "java -jar /home/site/wwwroot/gttc-lms-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod"
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_DEE05594356E4297B1327AF7B36B8B6B }}

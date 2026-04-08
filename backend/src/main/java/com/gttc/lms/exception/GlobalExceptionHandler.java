@@ -1,5 +1,7 @@
 package com.gttc.lms.exception;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -10,6 +12,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ErrorResponse> handleApi(ApiException ex) {
         return ResponseEntity.status(ex.getStatus()).body(new ErrorResponse(ex.getMessage()));
@@ -38,6 +42,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleOther(Exception ex) {
+        logger.error("Unhandled server exception", ex);
+
         String message = ex.getMessage();
         if (message == null || message.isBlank()) {
             Throwable cause = ex.getCause();
@@ -46,10 +52,33 @@ public class GlobalExceptionHandler {
             }
         }
 
+        if (hasNoClassDefFoundError(ex)) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(new ErrorResponse("Server update in progress. Please try again in a minute."));
+        }
+
         if (message == null || message.isBlank()) {
             message = "Unexpected error";
         }
 
         return ResponseEntity.internalServerError().body(new ErrorResponse(message));
+    }
+
+    private boolean hasNoClassDefFoundError(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof NoClassDefFoundError) {
+                return true;
+            }
+
+            String currentMessage = current.getMessage();
+            if (currentMessage != null && currentMessage.contains("NoClassDefFoundError")) {
+                return true;
+            }
+
+            current = current.getCause();
+        }
+
+        return false;
     }
 }
