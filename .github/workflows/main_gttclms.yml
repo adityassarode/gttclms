@@ -61,5 +61,4 @@ jobs:
           app-name: "gttclms"
           slot-name: "Production"
           package: "artifact/gttc-lms-0.0.1-SNAPSHOT.jar"
-          startup-command: "java -jar /home/site/wwwroot/gttc-lms-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod"
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_DEE05594356E4297B1327AF7B36B8B6B }}
