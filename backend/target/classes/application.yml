@@ -68,6 +68,7 @@ app:
     face:
       endpoint: ${APP_AZURE_FACE_ENDPOINT:}
       apiKey: ${APP_AZURE_FACE_API_KEY:}
+      recognitionModel: ${APP_AZURE_FACE_RECOGNITION_MODEL:recognition_04}
       connectTimeoutMs: ${APP_AZURE_FACE_CONNECT_TIMEOUT_MS:7000}
       readTimeoutMs: ${APP_AZURE_FACE_READ_TIMEOUT_MS:15000}
 
@@ -76,7 +77,8 @@ app:
 
   chatbot:
     geminiApiKey: ${APP_CHATBOT_GEMINI_API_KEY:}
-    geminiModel: ${APP_CHATBOT_GEMINI_MODEL:gemini-flash-latest}
+    geminiModel: ${APP_CHATBOT_GEMINI_MODEL:gemini-2.0-flash}
+    geminiFallbackModels: ${APP_CHATBOT_GEMINI_FALLBACK_MODELS:gemini-2.0-flash,gemini-1.5-flash,gemini-1.5-flash-latest}
     geminiBaseUrl: ${APP_CHATBOT_GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
     connectTimeoutMs: ${APP_CHATBOT_CONNECT_TIMEOUT_MS:10000}
     readTimeoutMs: ${APP_CHATBOT_READ_TIMEOUT_MS:45000}

@@ -4,10 +4,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gttc.lms.exception.ApiException;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -64,6 +68,7 @@ public class ChatbotService {
     private final String geminiApiKey;
     private final String geminiModel;
     private final String geminiBaseUrl;
+    private final String geminiFallbackModels;
     private final int geminiReadTimeoutMs;
 
     public ChatbotService(
@@ -71,6 +76,7 @@ public class ChatbotService {
             @Value("${app.chatbot.geminiApiKey:}") String geminiApiKey,
             @Value("${app.chatbot.geminiModel:gemini-flash-latest}") String geminiModel,
             @Value("${app.chatbot.geminiBaseUrl:https://generativelanguage.googleapis.com/v1beta}") String geminiBaseUrl,
+            @Value("${app.chatbot.geminiFallbackModels:gemini-2.0-flash,gemini-1.5-flash,gemini-1.5-flash-latest}") String geminiFallbackModels,
             @Value("${app.chatbot.connectTimeoutMs:10000}") int geminiConnectTimeoutMs,
             @Value("${app.chatbot.readTimeoutMs:45000}") int geminiReadTimeoutMs
     ) {
@@ -80,6 +86,7 @@ public class ChatbotService {
         this.geminiApiKey = geminiApiKey;
         this.geminiModel = geminiModel;
         this.geminiBaseUrl = geminiBaseUrl;
+        this.geminiFallbackModels = geminiFallbackModels;
     }
 
     public String ask(String message, String senderId) {
@@ -99,7 +106,6 @@ public class ChatbotService {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("X-goog-api-key", geminiApiKey.trim());
 
         String sender = StringUtils.hasText(senderId) ? senderId.trim() : "guest";
         String modelPrompt = buildModelPrompt(prompt, sender);
@@ -118,49 +124,57 @@ public class ChatbotService {
         payload.put("contents", List.of(content));
         payload.put("generationConfig", generationConfig);
 
-        ResponseEntity<String> response;
-        try {
-            response = restTemplate.exchange(
-                    buildGeminiEndpoint(),
-                    HttpMethod.POST,
-                    new HttpEntity<>(payload, headers),
-                    String.class
-            );
-        } catch (ResourceAccessException ex) {
-            logger.warn("Gemini chatbot timed out after {}ms read timeout", Math.max(1000, geminiReadTimeoutMs));
-            return finalizeReply(prompt, buildGeminiTimeoutReply(localReply));
-        } catch (HttpStatusCodeException ex) {
-            logger.warn(
-                    "Gemini chatbot returned status {} with body: {}",
-                    ex.getStatusCode().value(),
-                    ex.getResponseBodyAsString()
-            );
-            return finalizeReply(prompt, localReply);
-        } catch (Exception ex) {
-            logger.warn("Gemini chatbot call failed: {}", ex.getMessage());
-            return finalizeReply(prompt, localReply);
-        }
+        List<String> candidateModels = resolveCandidateModels();
+        String apiKey = geminiApiKey.trim();
+        HttpStatusCodeException lastHttpError = null;
 
-        if (!response.getStatusCode().is2xxSuccessful()) {
-            logger.warn("Gemini chatbot returned non-success status: {}", response.getStatusCode());
-            return finalizeReply(prompt, localReply);
-        }
-
-        String body = response.getBody();
-        if (!StringUtils.hasText(body)) {
-            return finalizeReply(prompt, localReply);
-        }
-
-        try {
-            String parsed = parseGeminiReply(body);
-            if (!StringUtils.hasText(parsed)) {
-                return finalizeReply(prompt, localReply);
+        for (String model : candidateModels) {
+            ResponseEntity<String> response;
+            try {
+                response = restTemplate.exchange(
+                        buildGeminiEndpoint(model, apiKey),
+                        HttpMethod.POST,
+                        new HttpEntity<>(payload, headers),
+                        String.class
+                );
+            } catch (ResourceAccessException ex) {
+                logger.warn("Gemini chatbot timed out after {}ms read timeout", Math.max(1000, geminiReadTimeoutMs));
+                return finalizeReply(prompt, buildGeminiTimeoutReply(localReply));
+            } catch (HttpStatusCodeException ex) {
+                lastHttpError = ex;
+                logger.warn(
+                        "Gemini model {} returned status {} with body: {}",
+                        model,
+                        ex.getStatusCode().value(),
+                        ex.getResponseBodyAsString()
+                );
+                continue;
+            } catch (Exception ex) {
+                logger.warn("Gemini chatbot call failed on model {}: {}", model, ex.getMessage());
+                continue;
             }
-            return finalizeReply(prompt, parsed.trim());
-        } catch (Exception ex) {
-            logger.warn("Failed to parse Gemini chatbot response: {}", ex.getMessage());
-            return finalizeReply(prompt, localReply);
+
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                logger.warn("Gemini model {} returned non-success status: {}", model, response.getStatusCode());
+                continue;
+            }
+
+            String body = response.getBody();
+            if (!StringUtils.hasText(body)) {
+                continue;
+            }
+
+            try {
+                String parsed = parseGeminiReply(body);
+                if (StringUtils.hasText(parsed)) {
+                    return finalizeReply(prompt, parsed.trim());
+                }
+            } catch (Exception ex) {
+                logger.warn("Failed to parse Gemini chatbot response for model {}: {}", model, ex.getMessage());
+            }
         }
+
+        return finalizeReply(prompt, buildGeminiUnavailableReply(localReply, lastHttpError));
     }
 
     private RestTemplate createRestTemplate(int connectTimeoutMs, int readTimeoutMs) {
@@ -179,14 +193,57 @@ public class ChatbotService {
                 + "Ask one short question about GTTC LMS and I will answer immediately.";
     }
 
-    private String buildGeminiEndpoint() {
+    private String buildGeminiEndpoint(String model, String apiKey) {
         String base = StringUtils.hasText(geminiBaseUrl)
                 ? geminiBaseUrl.trim()
                 : "https://generativelanguage.googleapis.com/v1beta";
-        String model = StringUtils.hasText(geminiModel)
-                ? geminiModel.trim()
-                : "gemini-flash-latest";
-        return base.replaceAll("/+$", "") + "/models/" + model + ":generateContent";
+        String normalizedModel = StringUtils.hasText(model)
+                ? model.trim()
+                : "gemini-2.0-flash";
+        return base.replaceAll("/+$", "")
+                + "/models/"
+                + URLEncoder.encode(normalizedModel, StandardCharsets.UTF_8)
+                + ":generateContent?key="
+                + URLEncoder.encode(apiKey, StandardCharsets.UTF_8);
+    }
+
+    private List<String> resolveCandidateModels() {
+        Set<String> candidates = new LinkedHashSet<>();
+
+        if (StringUtils.hasText(geminiModel)) {
+            candidates.add(geminiModel.trim());
+        }
+
+        if (StringUtils.hasText(geminiFallbackModels)) {
+            for (String fallback : geminiFallbackModels.split(",")) {
+                String trimmed = fallback == null ? "" : fallback.trim();
+                if (!trimmed.isEmpty()) {
+                    candidates.add(trimmed);
+                }
+            }
+        }
+
+        if (candidates.isEmpty()) {
+            candidates.add("gemini-2.0-flash");
+        }
+
+        return new ArrayList<>(candidates);
+    }
+
+    private String buildGeminiUnavailableReply(String localReply, HttpStatusCodeException error) {
+        if (!GENERIC_FALLBACK.equals(localReply)) {
+            return localReply;
+        }
+
+        if (error != null && (error.getStatusCode().value() == 401 || error.getStatusCode().value() == 403)) {
+            return "Gemini API key is invalid or not authorized. Please update APP_CHATBOT_GEMINI_API_KEY.";
+        }
+
+        if (error != null && error.getStatusCode().value() == 429) {
+            return "Gemini rate limit exceeded. Please wait a moment and try again.";
+        }
+
+        return GENERIC_FALLBACK;
     }
 
     private String buildModelPrompt(String userPrompt, String sender) {

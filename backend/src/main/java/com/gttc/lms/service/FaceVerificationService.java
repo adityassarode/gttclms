@@ -26,6 +26,7 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.Iterator;
 import java.util.Locale;
+import java.net.URLEncoder;
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageWriteParam;
@@ -59,6 +60,7 @@ public class FaceVerificationService {
 
     private final String faceEndpoint;
     private final String faceApiKey;
+    private final String faceRecognitionModel;
     private final int sessionTtlMinutes;
     private final String frontendUrls;
 
@@ -69,6 +71,7 @@ public class FaceVerificationService {
             ObjectMapper objectMapper,
             @Value("${app.azure.face.endpoint:}") String faceEndpoint,
             @Value("${app.azure.face.apiKey:}") String faceApiKey,
+            @Value("${app.azure.face.recognitionModel:recognition_04}") String faceRecognitionModel,
             @Value("${app.azure.face.connectTimeoutMs:7000}") int faceConnectTimeoutMs,
             @Value("${app.azure.face.readTimeoutMs:15000}") int faceReadTimeoutMs,
             @Value("${app.face.qrSessionMinutes:10}") int sessionTtlMinutes,
@@ -81,6 +84,7 @@ public class FaceVerificationService {
         this.restTemplate = createFaceApiRestTemplate(faceConnectTimeoutMs, faceReadTimeoutMs);
         this.faceEndpoint = faceEndpoint;
         this.faceApiKey = faceApiKey;
+        this.faceRecognitionModel = faceRecognitionModel;
         this.sessionTtlMinutes = sessionTtlMinutes;
         this.frontendUrls = frontendUrls;
     }
@@ -278,6 +282,9 @@ public class FaceVerificationService {
     private String buildFaceDetectUrl() {
         String endpoint = faceEndpoint == null ? "" : faceEndpoint.trim();
         endpoint = endpoint.replaceAll("/+$", "");
+        String recognitionModel = StringUtils.hasText(faceRecognitionModel)
+                ? faceRecognitionModel.trim()
+                : "recognition_04";
 
         String lowerEndpoint = endpoint.toLowerCase(Locale.ROOT);
         if (lowerEndpoint.endsWith("/face/v1.0")) {
@@ -289,7 +296,8 @@ public class FaceVerificationService {
                 + "?returnFaceId=false"
                 + "&returnFaceLandmarks=false"
                 + "&returnFaceAttributes=qualityForRecognition,blur,occlusion"
-                + "&detectionModel=detection_03";
+                + "&detectionModel=detection_03"
+                + "&recognitionModel=" + URLEncoder.encode(recognitionModel, StandardCharsets.UTF_8);
     }
 
     private ApiException toAzureApiException(HttpStatusCodeException exception) {
