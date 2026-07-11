@@ -62,7 +62,7 @@ public class UserController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public List<UserResponse> all() {
         List<User> users = userRepository.findAll();
 
@@ -72,7 +72,7 @@ public class UserController {
     }
 
     @PostMapping("/ban")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public UserResponse ban(@Valid @RequestBody BanUserRequest request) {
         User user = null;
 
@@ -103,7 +103,7 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public void remove(@PathVariable Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found"));

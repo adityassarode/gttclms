@@ -38,6 +38,9 @@ import type {
   WebScrapeExportPayload,
   WebScrapeRequestPayload,
   WebScrapeResponse,
+  Department,
+  DepartmentResource,
+  DepartmentSearchResult,
 } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 
@@ -781,6 +784,131 @@ export const api = {
       "Unable to load books",
       params,
       false,
+    );
+  },
+
+  // Departments
+  getDepartments(params?: { q?: string }) {
+    return request<Department[]>(
+      "/api/departments",
+      {},
+      "Unable to load departments",
+      params,
+      false,
+    );
+  },
+
+  getDepartment(id: string | number) {
+    return request<Department>(
+      `/api/departments/${id}`,
+      {},
+      "Unable to load department",
+      undefined,
+      false,
+    );
+  },
+
+  getDepartmentResources(
+    departmentId: string | number,
+    params?: { q?: string },
+  ) {
+    return request<DepartmentResource[]>(
+      `/api/departments/${departmentId}/resources`,
+      {},
+      "Unable to load department resources",
+      params,
+      false,
+    );
+  },
+
+  searchDepartments(query: string) {
+    return request<DepartmentSearchResult[]>(
+      "/api/departments/search",
+      {},
+      "Unable to search departments",
+      { q: query },
+      false,
+    );
+  },
+
+  // Admin: departments
+  createDepartment(payload: {
+    slug: string;
+    name: string;
+    description?: string;
+    logoUrl?: string;
+    published?: boolean;
+  }) {
+    return request<Department>(
+      "/api/admin/departments",
+      { method: "POST", body: JSON.stringify(payload) },
+      "Unable to create department",
+      undefined,
+      true,
+    );
+  },
+
+  updateDepartment(
+    id: string | number,
+    payload: {
+      slug?: string;
+      name?: string;
+      description?: string;
+      logoUrl?: string;
+      published?: boolean;
+    },
+  ) {
+    return request<Department>(
+      `/api/admin/departments/${id}`,
+      { method: "PUT", body: JSON.stringify(payload) },
+      "Unable to update department",
+      undefined,
+      true,
+    );
+  },
+
+  deleteDepartment(id: string | number) {
+    return request<void>(
+      `/api/admin/departments/${id}`,
+      { method: "DELETE" },
+      "Unable to delete department",
+      undefined,
+      true,
+    );
+  },
+
+  assignDepartmentAdmin(
+    departmentId: string | number,
+    userId: string | number,
+  ) {
+    return request<void>(
+      `/api/admin/departments/${departmentId}/assign/${userId}`,
+      { method: "POST" },
+      "Unable to assign department admin",
+      undefined,
+      true,
+    );
+  },
+
+  uploadDepartmentResource(
+    departmentId: string | number,
+    file: File,
+    title?: string,
+    description?: string,
+    folder?: string,
+  ) {
+    const fd = new FormData();
+    fd.append("file", file);
+    if (title) fd.append("title", title);
+    if (description) fd.append("description", description);
+    if (folder) fd.append("folder", folder);
+
+    return request<DepartmentResource[]>(
+      `/api/admin/departments/${departmentId}/resources`,
+      { method: "POST", body: fd },
+      "Unable to upload resource",
+      undefined,
+      true,
     );
   },
 

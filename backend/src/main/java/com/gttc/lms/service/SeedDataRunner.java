@@ -7,21 +7,26 @@ import com.gttc.lms.repository.StudentRepository;
 import java.util.List;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
+import com.gttc.lms.model.Department;
+import com.gttc.lms.repository.DepartmentRepository;
 
 @Component
 public class SeedDataRunner implements CommandLineRunner {
     private final StudentRepository studentRepository;
     private final BookRepository bookRepository;
+        private final DepartmentRepository departmentRepository;
 
-    public SeedDataRunner(StudentRepository studentRepository, BookRepository bookRepository) {
-        this.studentRepository = studentRepository;
-        this.bookRepository = bookRepository;
+        public SeedDataRunner(StudentRepository studentRepository, BookRepository bookRepository, DepartmentRepository departmentRepository) {
+                this.studentRepository = studentRepository;
+                this.bookRepository = bookRepository;
+                this.departmentRepository = departmentRepository;
     }
 
     @Override
     public void run(String... args) {
         seedStudents();
         seedBooks();
+                seedDepartments();
     }
 
     private void seedStudents() {
@@ -126,6 +131,27 @@ public class SeedDataRunner implements CommandLineRunner {
         );
         bookRepository.saveAll(books);
     }
+
+        private void seedDepartments() {
+                if (departmentRepository.count() > 0) {
+                        return;
+                }
+
+                Department d1 = new Department();
+                d1.setSlug("computer-science");
+                d1.setName("Computer Science");
+                d1.setDescription("Computer Science and Engineering");
+                d1.setPublished(true);
+
+                Department d2 = new Department();
+                d2.setSlug("electronics");
+                d2.setName("Electronics");
+                d2.setDescription("Electronics and Telecommunication");
+                d2.setPublished(true);
+
+                departmentRepository.save(d1);
+                departmentRepository.save(d2);
+        }
 
     private Book buildBook(String title, String author, String category, String description,
                            String keywords, String coverUrl, int copies, boolean featured) {

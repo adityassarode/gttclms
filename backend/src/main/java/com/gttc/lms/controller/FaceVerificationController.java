@@ -98,7 +98,7 @@ public class FaceVerificationController {
     }
 
     @GetMapping("/admin/{userId}/image")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<byte[]> getFaceImageForAdmin(
             @AuthenticationPrincipal Object principal,
             Authentication authentication,

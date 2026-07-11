@@ -2,7 +2,7 @@ import "./globals.css";
 import * as React from "react";
 import { AuthProvider } from "@/lib/auth-context";
 import { BackgroundCustomizer } from "@/components/background-customizer";
-import { NiraChatbot } from "@/components/nira-chatbot";
+import ConditionalChatbot from "@/components/conditional-chatbot";
 import { Toaster } from "sonner";
 
 export const metadata = {
@@ -20,7 +20,7 @@ export default function RootLayout({
       <body>
         <AuthProvider>
           {children}
-          <NiraChatbot />
+          <ConditionalChatbot />
         </AuthProvider>
         <BackgroundCustomizer />
         <Toaster richColors position="top-right" />

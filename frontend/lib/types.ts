@@ -330,3 +330,32 @@ export interface WebScrapeExportPayload {
   tables: WebScrapeTableItem[];
   sendEmail?: boolean;
 }
+
+// Departments
+export interface Department {
+  id: ApiId;
+  slug: string;
+  name: string;
+  description?: string | null;
+  logoUrl?: string | null;
+  published: boolean;
+  createdAt?: string;
+}
+
+export interface DepartmentResource {
+  id: ApiId;
+  departmentId: ApiId;
+  title: string;
+  description?: string | null;
+  fileUrl?: string | null;
+  fileType?: string | null;
+  folder?: string | null;
+  metadata?: Record<string, unknown> | null;
+  createdAt?: string;
+}
+
+export interface DepartmentSearchResult {
+  department: Department;
+  folder?: string | null;
+  resource: DepartmentResource;
+}

@@ -1,0 +1,83 @@
+package com.gttc.lms.controller;
+
+import com.gttc.lms.dto.DepartmentRequest;
+import com.gttc.lms.dto.DepartmentResponse;
+import com.gttc.lms.model.Department;
+import com.gttc.lms.model.DepartmentResource;
+import com.gttc.lms.service.DepartmentService;
+import com.gttc.lms.service.FileStorageService;
+import jakarta.validation.Valid;
+import java.security.Principal;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/admin/departments")
+public class AdminDepartmentController {
+    private final DepartmentService departmentService;
+    private final FileStorageService fileStorageService;
+
+    public AdminDepartmentController(DepartmentService departmentService, FileStorageService fileStorageService) {
+        this.departmentService = departmentService;
+        this.fileStorageService = fileStorageService;
+    }
+
+    @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','COLLEGE_ADMIN')")
+    public Department create(@Valid @RequestBody DepartmentRequest request) {
+        return departmentService.create(request);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','COLLEGE_ADMIN')")
+    public Department update(@PathVariable Long id, @Valid @RequestBody DepartmentRequest request) {
+        return departmentService.update(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','COLLEGE_ADMIN')")
+    public void delete(@PathVariable Long id) {
+        departmentService.delete(id);
+    }
+
+    // Assign a user as a Department Admin for a department
+    @PostMapping("/{id}/assign/{userId}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','COLLEGE_ADMIN')")
+    public void assign(@PathVariable Long id, @PathVariable Long userId) {
+        departmentService.assignAdmin(id, userId);
+    }
+
+    @PostMapping("/{id}/resources")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','COLLEGE_ADMIN')")
+    public com.gttc.lms.dto.DepartmentResourceResponse uploadResource(@PathVariable Long id, org.springframework.web.multipart.MultipartFile file,
+                               @org.springframework.web.bind.annotation.RequestParam(required = false) String title,
+                               @org.springframework.web.bind.annotation.RequestParam(required = false) String description,
+                               @org.springframework.web.bind.annotation.RequestParam(required = false) String folder) {
+        String url = fileStorageService.store("departments/" + id, file);
+        com.gttc.lms.model.DepartmentResource resource = new com.gttc.lms.model.DepartmentResource();
+        resource.setDepartmentId(id);
+        resource.setTitle(title == null ? file.getOriginalFilename() : title);
+        resource.setDescription(description);
+        resource.setFileUrl(url);
+        resource.setFileType(file.getContentType());
+        resource.setFolder(folder);
+        com.gttc.lms.model.DepartmentResource saved = departmentService.addResource(id, resource);
+
+        com.gttc.lms.dto.DepartmentResourceResponse resp = new com.gttc.lms.dto.DepartmentResourceResponse();
+        resp.id = saved.getId();
+        resp.departmentId = saved.getDepartmentId();
+        resp.title = saved.getTitle();
+        resp.description = saved.getDescription();
+        resp.fileUrl = saved.getFileUrl();
+        resp.fileType = saved.getFileType();
+        resp.folder = saved.getFolder();
+        resp.createdAt = saved.getCreatedAt();
+        return resp;
+    }
+}

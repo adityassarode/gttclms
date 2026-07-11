@@ -116,6 +116,13 @@
       <scope>runtime</scope>
     </dependency>
 
+    <!-- H2 for local development/testing -->
+    <dependency>
+      <groupId>com.h2database</groupId>
+      <artifactId>h2</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+
     <!-- Excel upload -->
     <dependency>
       <groupId>org.apache.poi</groupId>
