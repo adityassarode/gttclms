@@ -6,7 +6,8 @@ import { api } from "@/lib/api";
 import { DepartmentResource, Department } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { DepartmentResourceActions } from "@/components/department-resource-viewer";
+import { ArrowLeft } from "lucide-react";
 
 type RouteParams = { id: string };
 type Props = { params: RouteParams | Promise<RouteParams> };
@@ -111,13 +112,7 @@ export default function DepartmentPage({ params }: Props) {
                 <p className="break-all text-xs text-muted-foreground">{res.fileType || "File"}</p>
               </div>
 
-              {res.fileUrl ? (
-                <Button asChild variant="outline" size="sm" className="w-full shrink-0 sm:w-auto">
-                  <a href={res.fileUrl} target="_blank" rel="noreferrer"><ExternalLink className="mr-2 h-4 w-4" /> View / Download</a>
-                </Button>
-              ) : (
-                <span className="text-sm text-muted-foreground">No file</span>
-              )}
+              <DepartmentResourceActions resource={res} />
             </div>
           </article>
         ))}

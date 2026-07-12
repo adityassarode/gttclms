@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Upload, ExternalLink, ArrowLeft } from "lucide-react";
+import { DepartmentResourceActions } from "@/components/department-resource-viewer";
+import { Loader2, Upload, ArrowLeft } from "lucide-react";
 
 type RouteParams = { id: string };
 
@@ -157,7 +158,7 @@ export default function AdminDepartmentDetail({ params }: { params: RouteParams 
                     <p className="break-words text-sm text-muted-foreground">{r.description || "No description."}</p>
                     <p className="break-all text-xs text-muted-foreground">{r.fileType || "Unknown file type"}</p>
                   </div>
-                  {r.fileUrl ? <Button asChild variant="outline" size="sm" className="shrink-0"><a href={r.fileUrl} target="_blank" rel="noreferrer"><ExternalLink className="mr-1 h-4 w-4" /> Open</a></Button> : null}
+                  <DepartmentResourceActions resource={r} />
                 </div>
               </div>
             ))}
