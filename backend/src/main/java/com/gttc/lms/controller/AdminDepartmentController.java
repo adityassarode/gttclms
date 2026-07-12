@@ -9,6 +9,7 @@ import com.gttc.lms.service.DepartmentService;
 import com.gttc.lms.service.FileStorageService;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Map;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import org.springframework.web.multipart.MultipartFile;
 
@@ -112,8 +114,8 @@ public class AdminDepartmentController {
         String url = fileStorageService.store("departments/" + id, file);
         DepartmentResource resource = new DepartmentResource();
         resource.setDepartmentId(id);
-        resource.setTitle(title == null ? file.getOriginalFilename() : title);
-        resource.setDescription(description);
+        resource.setTitle(defaultIfBlank(fields.get("title"), file.getOriginalFilename()));
+        resource.setDescription(blankToNull(fields.get("description")));
         resource.setFileUrl(url);
         resource.setFileType(file.getContentType());
         resource.setFolder(folder);
@@ -141,6 +143,18 @@ public class AdminDepartmentController {
         resp.folder = resource.getFolder();
         resp.createdAt = resource.getCreatedAt();
         return resp;
+    }
+
+    private String defaultIfBlank(String value, String defaultValue) {
+        String normalized = blankToNull(value);
+        return normalized == null ? defaultValue : normalized;
+    }
+
+    private String blankToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value;
     }
 
     private DepartmentResponse toDto(Department d) {
