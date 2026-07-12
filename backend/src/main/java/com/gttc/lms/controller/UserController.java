@@ -1,10 +1,12 @@
 package com.gttc.lms.controller;
 
 import com.gttc.lms.dto.BanUserRequest;
+import com.gttc.lms.dto.UpdateUserRoleRequest;
 import com.gttc.lms.dto.UserResponse;
 import com.gttc.lms.dto.VerifyStudentRequest;
 import com.gttc.lms.exception.ApiException;
 import com.gttc.lms.model.User;
+import com.gttc.lms.model.enums.Role;
 import com.gttc.lms.model.enums.UserStatus;
 import com.gttc.lms.repository.UserRepository;
 import com.gttc.lms.service.AuthService;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -108,6 +111,18 @@ public class UserController {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found"));
         userRepository.delete(user);
+    }
+
+    @PutMapping("/{id}/role")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    public UserResponse updateRole(@PathVariable Long id, @Valid @RequestBody UpdateUserRoleRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found"));
+
+        Role newRole = request.resolveRole();
+        user.setRole(newRole);
+        userRepository.save(user);
+        return toUserResponse(user);
     }
 
     private UserResponse toUserResponse(User user) {

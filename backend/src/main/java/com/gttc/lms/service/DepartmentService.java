@@ -33,6 +33,10 @@ public class DepartmentService {
                 .toList();
     }
 
+    public List<Department> listAll() {
+        return departmentRepository.findAll();
+    }
+
     public Optional<Department> findById(Long id) {
         return departmentRepository.findById(id);
     }

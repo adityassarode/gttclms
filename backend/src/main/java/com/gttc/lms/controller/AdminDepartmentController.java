@@ -3,12 +3,12 @@ package com.gttc.lms.controller;
 import com.gttc.lms.dto.DepartmentRequest;
 import com.gttc.lms.dto.DepartmentResponse;
 import com.gttc.lms.model.Department;
-import com.gttc.lms.model.DepartmentResource;
 import com.gttc.lms.service.DepartmentService;
 import com.gttc.lms.service.FileStorageService;
 import jakarta.validation.Valid;
-import java.security.Principal;
+import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,6 +26,12 @@ public class AdminDepartmentController {
     public AdminDepartmentController(DepartmentService departmentService, FileStorageService fileStorageService) {
         this.departmentService = departmentService;
         this.fileStorageService = fileStorageService;
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','COLLEGE_ADMIN','DEPARTMENT_ADMIN')")
+    public List<DepartmentResponse> listAll() {
+        return departmentService.listAll().stream().map(this::toDto).toList();
     }
 
     @PostMapping
@@ -54,7 +60,7 @@ public class AdminDepartmentController {
     }
 
     @PostMapping("/{id}/resources")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','COLLEGE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','COLLEGE_ADMIN','DEPARTMENT_ADMIN')")
     public com.gttc.lms.dto.DepartmentResourceResponse uploadResource(@PathVariable Long id, org.springframework.web.multipart.MultipartFile file,
                                @org.springframework.web.bind.annotation.RequestParam(required = false) String title,
                                @org.springframework.web.bind.annotation.RequestParam(required = false) String description,
@@ -79,5 +85,17 @@ public class AdminDepartmentController {
         resp.folder = saved.getFolder();
         resp.createdAt = saved.getCreatedAt();
         return resp;
+    }
+
+    private DepartmentResponse toDto(Department d) {
+        DepartmentResponse r = new DepartmentResponse();
+        r.id = d.getId();
+        r.slug = d.getSlug();
+        r.name = d.getName();
+        r.description = d.getDescription();
+        r.logoUrl = d.getLogoUrl();
+        r.published = d.isPublished();
+        r.createdAt = d.getCreatedAt();
+        return r;
     }
 }
