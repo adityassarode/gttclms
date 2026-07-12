@@ -1,36 +1,35 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
-import { useRouter } from "next/navigation";
+import type { Department, DepartmentResource } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, ExternalLink, ArrowLeft } from "lucide-react";
 
-export default function AdminDepartmentDetail({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default function AdminDepartmentDetail({ params }: { params: { id: string } }) {
   const id = params.id;
-  const [resources, setResources] = React.useState<any[]>([]);
+  const [department, setDepartment] = React.useState<Department | null>(null);
+  const [resources, setResources] = React.useState<DepartmentResource[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [uploading, setUploading] = React.useState(false);
   const [file, setFile] = React.useState<File | null>(null);
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [folder, setFolder] = React.useState("");
-  const router = useRouter();
 
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
-      const rows = await api.getDepartmentResources(id);
+      const [dept, rows] = await Promise.all([api.getAdminDepartment(id), api.getDepartmentResources(id)]);
+      setDepartment(dept);
       setResources(rows || []);
-    } catch (err) {
-      toast.error("Unable to load resources");
+    } catch {
+      toast.error("Unable to load department resources");
     } finally {
       setLoading(false);
     }
@@ -47,95 +46,83 @@ export default function AdminDepartmentDetail({
       return;
     }
 
+    setUploading(true);
     try {
-      await api.uploadDepartmentResource(id, file, title, description, folder);
-      toast.success("Uploaded");
+      await api.uploadDepartmentResource(id, file, title.trim(), description.trim(), folder.trim());
+      toast.success("File uploaded");
       setFile(null);
       setTitle("");
       setDescription("");
       setFolder("");
+      const input = document.getElementById("department-file") as HTMLInputElement | null;
+      if (input) input.value = "";
       void load();
-    } catch (err) {
+    } catch {
       toast.error("Unable to upload file");
+    } finally {
+      setUploading(false);
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Department Admin</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage resources for this department.
-        </p>
+    <div className="space-y-6 overflow-hidden">
+      <Button asChild variant="ghost" size="sm" className="w-fit">
+        <Link href="/admin/departments"><ArrowLeft className="mr-2 h-4 w-4" /> Back to departments</Link>
+      </Button>
+
+      <div className="min-w-0">
+        <h1 className="break-words text-2xl font-semibold">{department?.name || "Department files"}</h1>
+        <p className="break-words text-sm text-muted-foreground">Upload and review files shown on this department page.</p>
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Upload Resource</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Upload className="h-4 w-4" /> Upload File</CardTitle></CardHeader>
         <CardContent>
-          <form onSubmit={handleUpload} className="space-y-3">
-            <div>
-              <Label>File</Label>
-              <input
-                type="file"
-                onChange={(e) =>
-                  setFile(e.target.files ? e.target.files[0] : null)
-                }
-              />
+          <form onSubmit={handleUpload} className="space-y-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="min-w-0">
+                <Label htmlFor="department-file">File *</Label>
+                <Input id="department-file" type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+              </div>
+              <div className="min-w-0">
+                <Label htmlFor="title">Title</Label>
+                <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={file?.name || "Display title"} />
+              </div>
             </div>
-            <div>
-              <Label>Title</Label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="min-w-0">
+                <Label htmlFor="description">Description</Label>
+                <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} />
+              </div>
+              <div className="min-w-0">
+                <Label htmlFor="folder">Folder / category</Label>
+                <Input id="folder" value={folder} onChange={(e) => setFolder(e.target.value)} placeholder="General" />
+              </div>
             </div>
-            <div>
-              <Label>Description</Label>
-              <Input
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label>Folder</Label>
-              <Input
-                value={folder}
-                onChange={(e) => setFolder(e.target.value)}
-              />
-            </div>
-
-            <Button type="submit">Upload</Button>
+            <Button type="submit" disabled={uploading} className="w-full sm:w-auto">
+              {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Upload File
+            </Button>
           </form>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Resources</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-lg">Uploaded Files</CardTitle></CardHeader>
         <CardContent>
           {loading ? <p>Loading...</p> : null}
-          <div className="space-y-3">
+          {!loading && resources.length === 0 ? <p className="text-sm text-muted-foreground">No files uploaded yet.</p> : null}
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             {resources.map((r) => (
-              <div key={r.id} className="rounded-md border p-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">{r.title}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {r.folder}
-                    </div>
+              <div key={r.id} className="min-w-0 rounded-md border p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 space-y-1">
+                    <div className="break-words font-medium">{r.title}</div>
+                    <div className="break-words text-xs text-muted-foreground">{r.folder || "General"}</div>
+                    <p className="break-words text-sm text-muted-foreground">{r.description || "No description."}</p>
+                    <p className="break-all text-xs text-muted-foreground">{r.fileType || "Unknown file type"}</p>
                   </div>
-                  <div>
-                    {r.fileUrl ? (
-                      <a
-                        href={r.fileUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-primary"
-                      >
-                        View
-                      </a>
-                    ) : null}
-                  </div>
+                  {r.fileUrl ? <Button asChild variant="outline" size="sm" className="shrink-0"><a href={r.fileUrl} target="_blank" rel="noreferrer"><ExternalLink className="mr-1 h-4 w-4" /> Open</a></Button> : null}
                 </div>
               </div>
             ))}

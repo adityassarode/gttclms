@@ -832,6 +832,26 @@ export const api = {
   },
 
   // Admin: departments
+  getAdminDepartments() {
+    return request<Department[]>(
+      "/api/admin/departments",
+      {},
+      "Unable to load departments",
+      undefined,
+      true,
+    );
+  },
+
+  getAdminDepartment(id: string | number) {
+    return request<Department>(
+      `/api/admin/departments/${id}`,
+      {},
+      "Unable to load department",
+      undefined,
+      true,
+    );
+  },
+
   createDepartment(payload: {
     slug: string;
     name: string;
@@ -903,7 +923,7 @@ export const api = {
     if (description) fd.append("description", description);
     if (folder) fd.append("folder", folder);
 
-    return request<DepartmentResource[]>(
+    return request<DepartmentResource>(
       `/api/admin/departments/${departmentId}/resources`,
       { method: "POST", body: fd },
       "Unable to upload resource",

@@ -20,6 +20,7 @@ import {
   Bell,
   Menu,
   Home,
+  Building2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -47,6 +48,7 @@ import { Badge } from "@/components/ui/badge";
 
 const navigation = [
   { name: "Discover", href: "/", icon: Home, requiresAuth: false },
+  { name: "Departments", href: "/departments", icon: Building2, requiresAuth: false },
   {
     name: "Digital Books",
     href: "/digital",

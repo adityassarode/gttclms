@@ -38,19 +38,19 @@ public class AdminController {
     }
 
     @PostMapping("/students")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public Student addStudent(@Valid @RequestBody StudentRequest request) {
         return studentService.addStudent(request);
     }
 
     @PostMapping("/students/upload")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public List<Student> upload(@RequestParam MultipartFile file) {
         return studentService.uploadStudents(file);
     }
 
     @GetMapping("/analytics")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public AnalyticsResponse analytics() {
         return adminService.getAnalytics();
     }
