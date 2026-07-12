@@ -2,20 +2,26 @@ package com.gttc.lms.controller;
 
 import com.gttc.lms.dto.DepartmentRequest;
 import com.gttc.lms.dto.DepartmentResponse;
+import com.gttc.lms.dto.DepartmentResourceResponse;
 import com.gttc.lms.model.Department;
+import com.gttc.lms.model.DepartmentResource;
 import com.gttc.lms.service.DepartmentService;
 import com.gttc.lms.service.FileStorageService;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Map;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/admin/departments")
@@ -66,32 +72,57 @@ public class AdminDepartmentController {
         departmentService.assignAdmin(id, userId);
     }
 
-    @PostMapping("/{id}/resources")
+    @GetMapping("/{id}/resources")
     @PreAuthorize("hasRole('ADMIN')")
-    public com.gttc.lms.dto.DepartmentResourceResponse uploadResource(@PathVariable Long id, org.springframework.web.multipart.MultipartFile file,
-                               @org.springframework.web.bind.annotation.RequestParam(required = false) String title,
-                               @org.springframework.web.bind.annotation.RequestParam(required = false) String description,
-                               @org.springframework.web.bind.annotation.RequestParam(required = false) String folder) {
+    public List<DepartmentResourceResponse> listResources(@PathVariable Long id) {
+        departmentService.findById(id).orElseThrow();
+        return departmentService.listResources(id).stream().map(this::toResourceDto).toList();
+    }
+
+    @PostMapping(value = "/{id}/resources", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public DepartmentResourceResponse uploadResource(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam Map<String, String> fields
+    ) {
+        departmentService.findById(id).orElseThrow();
         String url = fileStorageService.store("departments/" + id, file);
-        com.gttc.lms.model.DepartmentResource resource = new com.gttc.lms.model.DepartmentResource();
+        DepartmentResource resource = new DepartmentResource();
         resource.setDepartmentId(id);
-        resource.setTitle(title == null ? file.getOriginalFilename() : title);
-        resource.setDescription(description);
+        resource.setTitle(defaultIfBlank(fields.get("title"), file.getOriginalFilename()));
+        resource.setDescription(blankToNull(fields.get("description")));
         resource.setFileUrl(url);
         resource.setFileType(file.getContentType());
-        resource.setFolder(folder);
-        com.gttc.lms.model.DepartmentResource saved = departmentService.addResource(id, resource);
+        resource.setFolder(blankToNull(fields.get("folder")));
+        DepartmentResource saved = departmentService.addResource(id, resource);
 
-        com.gttc.lms.dto.DepartmentResourceResponse resp = new com.gttc.lms.dto.DepartmentResourceResponse();
-        resp.id = saved.getId();
-        resp.departmentId = saved.getDepartmentId();
-        resp.title = saved.getTitle();
-        resp.description = saved.getDescription();
-        resp.fileUrl = saved.getFileUrl();
-        resp.fileType = saved.getFileType();
-        resp.folder = saved.getFolder();
-        resp.createdAt = saved.getCreatedAt();
+        return toResourceDto(saved);
+    }
+
+    private DepartmentResourceResponse toResourceDto(DepartmentResource resource) {
+        DepartmentResourceResponse resp = new DepartmentResourceResponse();
+        resp.id = resource.getId();
+        resp.departmentId = resource.getDepartmentId();
+        resp.title = resource.getTitle();
+        resp.description = resource.getDescription();
+        resp.fileUrl = resource.getFileUrl();
+        resp.fileType = resource.getFileType();
+        resp.folder = resource.getFolder();
+        resp.createdAt = resource.getCreatedAt();
         return resp;
+    }
+
+    private String defaultIfBlank(String value, String defaultValue) {
+        String normalized = blankToNull(value);
+        return normalized == null ? defaultValue : normalized;
+    }
+
+    private String blankToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value;
     }
 
     private DepartmentResponse toDto(Department d) {

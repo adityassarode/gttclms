@@ -25,11 +25,18 @@ export default function AdminDepartmentDetail({ params }: { params: { id: string
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
-      const [dept, rows] = await Promise.all([api.getAdminDepartment(id), api.getDepartmentResources(id)]);
+      const [dept, rows] = await Promise.all([
+        api.getAdminDepartment(id),
+        api.getAdminDepartmentResources(id),
+      ]);
       setDepartment(dept);
       setResources(rows || []);
-    } catch {
-      toast.error("Unable to load department resources");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to load department resources",
+      );
     } finally {
       setLoading(false);
     }
@@ -48,17 +55,27 @@ export default function AdminDepartmentDetail({ params }: { params: { id: string
 
     setUploading(true);
     try {
-      await api.uploadDepartmentResource(id, file, title.trim(), description.trim(), folder.trim());
+      await api.uploadDepartmentResource(
+        id,
+        file,
+        title.trim(),
+        description.trim(),
+        folder.trim(),
+      );
       toast.success("File uploaded");
       setFile(null);
       setTitle("");
       setDescription("");
       setFolder("");
-      const input = document.getElementById("department-file") as HTMLInputElement | null;
+      const input = document.getElementById(
+        "department-file",
+      ) as HTMLInputElement | null;
       if (input) input.value = "";
       void load();
-    } catch {
-      toast.error("Unable to upload file");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to upload file",
+      );
     } finally {
       setUploading(false);
     }

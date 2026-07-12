@@ -33,12 +33,28 @@ public class DepartmentService {
                 .toList();
     }
 
+    public List<Department> searchPublished(String q) {
+        return departmentRepository.searchPublished(q == null ? "" : q);
+    }
+
     public List<Department> listAll() {
         return departmentRepository.findAll();
     }
 
     public Optional<Department> findById(Long id) {
         return departmentRepository.findById(id);
+    }
+
+    public Optional<Department> findPublishedByIdentifier(String identifier) {
+        if (identifier == null || identifier.isBlank()) {
+            return Optional.empty();
+        }
+
+        Optional<Department> department = parseLong(identifier)
+                .flatMap(departmentRepository::findById)
+                .or(() -> departmentRepository.findBySlug(identifier));
+
+        return department.filter(Department::isPublished);
     }
 
     public List<DepartmentResource> listResources(Long departmentId) {
@@ -96,5 +112,13 @@ public class DepartmentService {
 
     public boolean isUserAssignedToDepartment(Long userId, Long departmentId) {
         return assignmentRepository.findByAppUserIdAndDepartmentId(userId, departmentId).isPresent();
+    }
+
+    private Optional<Long> parseLong(String value) {
+        try {
+            return Optional.of(Long.parseLong(value));
+        } catch (NumberFormatException ex) {
+            return Optional.empty();
+        }
     }
 }
