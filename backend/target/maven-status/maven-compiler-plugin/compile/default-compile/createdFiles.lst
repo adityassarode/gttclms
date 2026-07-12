@@ -44,6 +44,7 @@ com/gttc/lms/dto/FaceVerificationSessionResponse.class
 com/gttc/lms/repository/UserRepository.class
 com/gttc/lms/dto/BorrowResponse.class
 com/gttc/lms/service/DepartmentService.class
+com/gttc/lms/dto/UpdateUserRoleRequest.class
 com/gttc/lms/service/TopicVideoService.class
 com/gttc/lms/dto/BookResponse.class
 com/gttc/lms/service/StudentService.class

@@ -126,6 +126,7 @@
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/dto/WebScrapeRequest.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/repository/QuestionPaperRepository.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/dto/TopicVideoResponse.java
+/workspaces/gttclms/backend/src/main/java/com/gttc/lms/dto/UpdateUserRoleRequest.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/dto/DepartmentResponse.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/dto/BanUserRequest.java
 /workspaces/gttclms/backend/src/main/java/com/gttc/lms/repository/UserFaceVerificationRepository.java
