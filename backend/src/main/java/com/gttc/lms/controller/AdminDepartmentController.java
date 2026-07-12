@@ -15,7 +15,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.MediaType;
 
 @RestController
 @RequestMapping("/api/admin/departments")
@@ -66,12 +68,23 @@ public class AdminDepartmentController {
         departmentService.assignAdmin(id, userId);
     }
 
-    @PostMapping("/{id}/resources")
+    @GetMapping("/{id}/resources")
     @PreAuthorize("hasRole('ADMIN')")
-    public com.gttc.lms.dto.DepartmentResourceResponse uploadResource(@PathVariable Long id, org.springframework.web.multipart.MultipartFile file,
-                               @org.springframework.web.bind.annotation.RequestParam(required = false) String title,
-                               @org.springframework.web.bind.annotation.RequestParam(required = false) String description,
-                               @org.springframework.web.bind.annotation.RequestParam(required = false) String folder) {
+    public List<com.gttc.lms.dto.DepartmentResourceResponse> listResources(@PathVariable Long id) {
+        departmentService.findById(id).orElseThrow();
+        return departmentService.listResources(id).stream().map(this::toResourceDto).toList();
+    }
+
+    @PostMapping(value = "/{id}/resources", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public com.gttc.lms.dto.DepartmentResourceResponse uploadResource(
+            @PathVariable Long id,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false) String folder
+    ) {
+        departmentService.findById(id).orElseThrow();
         String url = fileStorageService.store("departments/" + id, file);
         com.gttc.lms.model.DepartmentResource resource = new com.gttc.lms.model.DepartmentResource();
         resource.setDepartmentId(id);
@@ -82,15 +95,19 @@ public class AdminDepartmentController {
         resource.setFolder(folder);
         com.gttc.lms.model.DepartmentResource saved = departmentService.addResource(id, resource);
 
+        return toResourceDto(saved);
+    }
+
+    private com.gttc.lms.dto.DepartmentResourceResponse toResourceDto(com.gttc.lms.model.DepartmentResource resource) {
         com.gttc.lms.dto.DepartmentResourceResponse resp = new com.gttc.lms.dto.DepartmentResourceResponse();
-        resp.id = saved.getId();
-        resp.departmentId = saved.getDepartmentId();
-        resp.title = saved.getTitle();
-        resp.description = saved.getDescription();
-        resp.fileUrl = saved.getFileUrl();
-        resp.fileType = saved.getFileType();
-        resp.folder = saved.getFolder();
-        resp.createdAt = saved.getCreatedAt();
+        resp.id = resource.getId();
+        resp.departmentId = resource.getDepartmentId();
+        resp.title = resource.getTitle();
+        resp.description = resource.getDescription();
+        resp.fileUrl = resource.getFileUrl();
+        resp.fileType = resource.getFileType();
+        resp.folder = resource.getFolder();
+        resp.createdAt = resource.getCreatedAt();
         return resp;
     }
 

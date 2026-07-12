@@ -910,6 +910,16 @@ export const api = {
     );
   },
 
+  getAdminDepartmentResources(departmentId: string | number) {
+    return request<DepartmentResource[]>(
+      `/api/admin/departments/${departmentId}/resources`,
+      {},
+      "Unable to load department resources",
+      undefined,
+      true,
+    );
+  },
+
   uploadDepartmentResource(
     departmentId: string | number,
     file: File,
