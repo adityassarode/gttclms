@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -27,6 +28,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final String localIssuerMarker;
     private static final String LOCAL_USER_ROLE_MARKER = "\"role\":\"USER\"";
     private static final String LOCAL_ADMIN_ROLE_MARKER = "\"role\":\"ADMIN\"";
+    private static final String LOCAL_SUPER_ADMIN_ROLE_MARKER = "\"role\":\"SUPER_ADMIN\"";
 
     public JwtAuthFilter(
             JwtService jwtService,
@@ -54,8 +56,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         if (user.getStatus() == UserStatus.BANNED) {
                             return;
                         }
-                        List<SimpleGrantedAuthority> authorities =
-                                List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+                        List<SimpleGrantedAuthority> authorities = roleAuthorities(user);
                         UsernamePasswordAuthenticationToken authentication =
                                 new UsernamePasswordAuthenticationToken(user, null, authorities);
                         SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -77,9 +78,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         try {
             String payload = new String(Base64.getUrlDecoder().decode(parts[1]), StandardCharsets.UTF_8);
             return payload.contains(localIssuerMarker)
-                    && (payload.contains(LOCAL_USER_ROLE_MARKER) || payload.contains(LOCAL_ADMIN_ROLE_MARKER));
+                    && (payload.contains(LOCAL_USER_ROLE_MARKER)
+                    || payload.contains(LOCAL_ADMIN_ROLE_MARKER)
+                    || payload.contains(LOCAL_SUPER_ADMIN_ROLE_MARKER));
         } catch (IllegalArgumentException ex) {
             return false;
         }
+    }
+
+    private List<SimpleGrantedAuthority> roleAuthorities(User user) {
+        List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+        if (user.getRole() != null) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+            if (user.getRole().hasAdminPrivileges()) {
+                authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+            }
+        }
+        return authorities;
     }
 }

@@ -79,7 +79,7 @@ public class SupabaseUserService {
             user.setAvatarUrl(avatarUrl);
         }
 
-        if (bootstrapAdmin && user.getRole() != Role.ADMIN) {
+        if (bootstrapAdmin && (user.getRole() == null || !user.getRole().hasAdminPrivileges())) {
             user.setRole(Role.ADMIN);
         } else if (user.getRole() == null) {
             user.setRole(Role.USER);

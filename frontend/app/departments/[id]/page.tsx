@@ -8,16 +8,28 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 
-type Props = { params: { id: string } };
+type RouteParams = { id: string };
+type Props = { params: RouteParams | Promise<RouteParams> };
 
 export default function DepartmentPage({ params }: Props) {
-  const id = params.id;
+  const [id, setId] = React.useState<string | null>(null);
   const [department, setDepartment] = React.useState<Department | null>(null);
   const [resources, setResources] = React.useState<DepartmentResource[]>([]);
   const [query, setQuery] = React.useState("");
   const [loading, setLoading] = React.useState(false);
 
   React.useEffect(() => {
+    let mounted = true;
+    void Promise.resolve(params).then((resolved) => {
+      if (mounted) setId(resolved.id);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [params]);
+
+  React.useEffect(() => {
+    if (!id) return;
     let mounted = true;
     setLoading(true);
     void Promise.allSettled([
@@ -48,6 +60,7 @@ export default function DepartmentPage({ params }: Props) {
 
   const onLocalSearch = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!id) return;
     setLoading(true);
     try {
       const r = await api.getDepartmentResources(id, { q: query.trim() });
