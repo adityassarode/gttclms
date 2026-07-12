@@ -68,6 +68,7 @@ public class AdminDepartmentController {
         departmentService.assignAdmin(id, userId);
     }
 
+
     @GetMapping("/{id}/resources")
     @PreAuthorize("hasRole('ADMIN')")
     public List<com.gttc.lms.dto.DepartmentResourceResponse> listResources(@PathVariable Long id) {
@@ -77,6 +78,10 @@ public class AdminDepartmentController {
 
     @PostMapping(value = "/{id}/resources", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
+
+    @PostMapping(value = "/{id}/resources", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+
     public com.gttc.lms.dto.DepartmentResourceResponse uploadResource(
             @PathVariable Long id,
             @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
