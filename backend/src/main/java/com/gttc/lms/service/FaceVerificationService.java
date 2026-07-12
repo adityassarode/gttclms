@@ -175,7 +175,7 @@ public class FaceVerificationService {
     @Transactional
     public FaceImagePayload getFaceImageForAdmin(User admin, Long targetUserId) {
         validateUser(admin);
-        if (admin.getRole() != Role.ADMIN) {
+        if ((admin.getRole() == null || !admin.getRole().hasAdminPrivileges())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Admin access required");
         }
 

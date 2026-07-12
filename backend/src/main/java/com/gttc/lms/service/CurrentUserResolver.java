@@ -86,7 +86,7 @@ public class CurrentUserResolver {
         if (user.getStatus() != UserStatus.ACTIVE) {
             user.setStatus(UserStatus.ACTIVE);
         }
-        if (user.getRole() != Role.ADMIN) {
+        if (user.getRole() == null || !user.getRole().hasAdminPrivileges()) {
             user.setRole(Role.ADMIN);
         }
         if (!user.isVerified()) {
