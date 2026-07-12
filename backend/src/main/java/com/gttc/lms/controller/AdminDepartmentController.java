@@ -9,7 +9,6 @@ import com.gttc.lms.service.DepartmentService;
 import com.gttc.lms.service.FileStorageService;
 import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Map;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -22,11 +21,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-
-import org.springframework.web.multipart.MultipartFile;
-
-import org.springframework.http.MediaType;
-
 
 @RestController
 @RequestMapping("/api/admin/departments")
@@ -77,35 +71,18 @@ public class AdminDepartmentController {
         departmentService.assignAdmin(id, userId);
     }
 
-
     @GetMapping("/{id}/resources")
     @PreAuthorize("hasRole('ADMIN')")
     public List<DepartmentResourceResponse> listResources(@PathVariable Long id) {
-
-
-    @GetMapping("/{id}/resources")
-    @PreAuthorize("hasRole('ADMIN')")
-    public List<com.gttc.lms.dto.DepartmentResourceResponse> listResources(@PathVariable Long id) {
-
         departmentService.findById(id).orElseThrow();
         return departmentService.listResources(id).stream().map(this::toResourceDto).toList();
     }
 
     @PostMapping(value = "/{id}/resources", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
-
     public DepartmentResourceResponse uploadResource(
             @PathVariable Long id,
             @RequestParam("file") MultipartFile file,
-
-
-    @PostMapping(value = "/{id}/resources", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasRole('ADMIN')")
-
-    public com.gttc.lms.dto.DepartmentResourceResponse uploadResource(
-            @PathVariable Long id,
-            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
-
             @RequestParam(required = false) String title,
             @RequestParam(required = false) String description,
             @RequestParam(required = false) String folder
@@ -114,8 +91,8 @@ public class AdminDepartmentController {
         String url = fileStorageService.store("departments/" + id, file);
         DepartmentResource resource = new DepartmentResource();
         resource.setDepartmentId(id);
-        resource.setTitle(defaultIfBlank(fields.get("title"), file.getOriginalFilename()));
-        resource.setDescription(blankToNull(fields.get("description")));
+        resource.setTitle(defaultIfBlank(title, file.getOriginalFilename()));
+        resource.setDescription(blankToNull(description));
         resource.setFileUrl(url);
         resource.setFileType(file.getContentType());
         resource.setFolder(folder);
@@ -124,16 +101,8 @@ public class AdminDepartmentController {
         return toResourceDto(saved);
     }
 
-
     private DepartmentResourceResponse toResourceDto(DepartmentResource resource) {
         DepartmentResourceResponse resp = new DepartmentResourceResponse();
-
-        return toResourceDto(saved);
-    }
-
-    private com.gttc.lms.dto.DepartmentResourceResponse toResourceDto(com.gttc.lms.model.DepartmentResource resource) {
-        com.gttc.lms.dto.DepartmentResourceResponse resp = new com.gttc.lms.dto.DepartmentResourceResponse();
-
         resp.id = resource.getId();
         resp.departmentId = resource.getDepartmentId();
         resp.title = resource.getTitle();
