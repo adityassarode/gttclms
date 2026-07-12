@@ -68,8 +68,20 @@ public class AdminDepartmentController {
         departmentService.assignAdmin(id, userId);
     }
 
+
+    @GetMapping("/{id}/resources")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<com.gttc.lms.dto.DepartmentResourceResponse> listResources(@PathVariable Long id) {
+        departmentService.findById(id).orElseThrow();
+        return departmentService.listResources(id).stream().map(this::toResourceDto).toList();
+    }
+
     @PostMapping(value = "/{id}/resources", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
+
+    @PostMapping(value = "/{id}/resources", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+
     public com.gttc.lms.dto.DepartmentResourceResponse uploadResource(
             @PathVariable Long id,
             @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
@@ -88,15 +100,19 @@ public class AdminDepartmentController {
         resource.setFolder(folder);
         com.gttc.lms.model.DepartmentResource saved = departmentService.addResource(id, resource);
 
+        return toResourceDto(saved);
+    }
+
+    private com.gttc.lms.dto.DepartmentResourceResponse toResourceDto(com.gttc.lms.model.DepartmentResource resource) {
         com.gttc.lms.dto.DepartmentResourceResponse resp = new com.gttc.lms.dto.DepartmentResourceResponse();
-        resp.id = saved.getId();
-        resp.departmentId = saved.getDepartmentId();
-        resp.title = saved.getTitle();
-        resp.description = saved.getDescription();
-        resp.fileUrl = saved.getFileUrl();
-        resp.fileType = saved.getFileType();
-        resp.folder = saved.getFolder();
-        resp.createdAt = saved.getCreatedAt();
+        resp.id = resource.getId();
+        resp.departmentId = resource.getDepartmentId();
+        resp.title = resource.getTitle();
+        resp.description = resource.getDescription();
+        resp.fileUrl = resource.getFileUrl();
+        resp.fileType = resource.getFileType();
+        resp.folder = resource.getFolder();
+        resp.createdAt = resource.getCreatedAt();
         return resp;
     }
 

@@ -52,18 +52,18 @@ public class DepartmentController {
         return out;
     }
 
-    @GetMapping("/{id}")
-    public DepartmentResponse get(@PathVariable Long id) {
-        Department d = departmentService.findById(id).orElseThrow();
-        if (!d.isPublished()) {
-            throw new java.util.NoSuchElementException("Department not found");
-        }
+    @GetMapping("/{identifier}")
+    public DepartmentResponse get(@PathVariable String identifier) {
+        Department d = departmentService.findPublishedByIdentifier(identifier).orElseThrow();
         return toDto(d);
     }
 
-    @GetMapping("/{id}/resources")
-    public List<DepartmentResourceResponse> resources(@PathVariable Long id, @RequestParam(required = false) String q) {
-        List<DepartmentResource> res = (q == null || q.isBlank()) ? departmentService.listResources(id) : departmentService.searchResources(id, q);
+    @GetMapping("/{identifier}/resources")
+    public List<DepartmentResourceResponse> resources(@PathVariable String identifier, @RequestParam(required = false) String q) {
+        Department d = departmentService.findPublishedByIdentifier(identifier).orElseThrow();
+        List<DepartmentResource> res = (q == null || q.isBlank())
+                ? departmentService.listResources(d.getId())
+                : departmentService.searchResources(d.getId(), q);
         return res.stream().map(this::toResourceDto).collect(Collectors.toList());
     }
 

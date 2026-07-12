@@ -45,6 +45,18 @@ public class DepartmentService {
         return departmentRepository.findById(id);
     }
 
+    public Optional<Department> findPublishedByIdentifier(String identifier) {
+        if (identifier == null || identifier.isBlank()) {
+            return Optional.empty();
+        }
+
+        Optional<Department> department = parseLong(identifier)
+                .flatMap(departmentRepository::findById)
+                .or(() -> departmentRepository.findBySlug(identifier));
+
+        return department.filter(Department::isPublished);
+    }
+
     public List<DepartmentResource> listResources(Long departmentId) {
         return resourceRepository.findByDepartmentIdOrderByCreatedAtDesc(departmentId);
     }
@@ -100,5 +112,13 @@ public class DepartmentService {
 
     public boolean isUserAssignedToDepartment(Long userId, Long departmentId) {
         return assignmentRepository.findByAppUserIdAndDepartmentId(userId, departmentId).isPresent();
+    }
+
+    private Optional<Long> parseLong(String value) {
+        try {
+            return Optional.of(Long.parseLong(value));
+        } catch (NumberFormatException ex) {
+            return Optional.empty();
+        }
     }
 }
