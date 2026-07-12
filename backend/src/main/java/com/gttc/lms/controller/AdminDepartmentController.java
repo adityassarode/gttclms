@@ -29,38 +29,45 @@ public class AdminDepartmentController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','COLLEGE_ADMIN','DEPARTMENT_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public List<DepartmentResponse> listAll() {
         return departmentService.listAll().stream().map(this::toDto).toList();
     }
 
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public DepartmentResponse get(@PathVariable Long id) {
+        Department department = departmentService.findById(id).orElseThrow();
+        return toDto(department);
+    }
+
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','COLLEGE_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public Department create(@Valid @RequestBody DepartmentRequest request) {
         return departmentService.create(request);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','COLLEGE_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public Department update(@PathVariable Long id, @Valid @RequestBody DepartmentRequest request) {
         return departmentService.update(id, request);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','COLLEGE_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public void delete(@PathVariable Long id) {
         departmentService.delete(id);
     }
 
     // Assign a user as a Department Admin for a department
     @PostMapping("/{id}/assign/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','COLLEGE_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public void assign(@PathVariable Long id, @PathVariable Long userId) {
         departmentService.assignAdmin(id, userId);
     }
 
     @PostMapping("/{id}/resources")
-    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN','COLLEGE_ADMIN','DEPARTMENT_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public com.gttc.lms.dto.DepartmentResourceResponse uploadResource(@PathVariable Long id, org.springframework.web.multipart.MultipartFile file,
                                @org.springframework.web.bind.annotation.RequestParam(required = false) String title,
                                @org.springframework.web.bind.annotation.RequestParam(required = false) String description,

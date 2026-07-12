@@ -24,10 +24,6 @@ public class UpdateUserRoleRequest {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Role is required");
         }
 
-        if ("FACULTY_ADMIN".equals(normalized)) {
-            return Role.DEPARTMENT_ADMIN;
-        }
-
         try {
             return Role.valueOf(normalized);
         } catch (IllegalArgumentException ex) {

@@ -27,7 +27,9 @@ public class DepartmentController {
 
     @GetMapping
     public List<DepartmentResponse> list(@RequestParam(required = false) String q) {
-        List<Department> departments = departmentService.listPublished();
+        List<Department> departments = (q == null || q.isBlank())
+                ? departmentService.listPublished()
+                : departmentService.searchPublished(q);
         return departments.stream().map(this::toDto).collect(Collectors.toList());
     }
 
@@ -53,6 +55,9 @@ public class DepartmentController {
     @GetMapping("/{id}")
     public DepartmentResponse get(@PathVariable Long id) {
         Department d = departmentService.findById(id).orElseThrow();
+        if (!d.isPublished()) {
+            throw new java.util.NoSuchElementException("Department not found");
+        }
         return toDto(d);
     }
 
