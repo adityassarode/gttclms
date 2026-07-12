@@ -4,15 +4,16 @@ import com.gttc.lms.dto.StudentRequest;
 import com.gttc.lms.exception.ApiException;
 import com.gttc.lms.model.Student;
 import com.gttc.lms.repository.StudentRepository;
+import java.io.IOException;
 import java.io.InputStream;
-import java.util.Locale;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
@@ -67,8 +68,10 @@ public class StudentService {
         if (file == null || file.isEmpty()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "No file provided");
         }
+        validateExcelUpload(file);
+
         List<Student> imported = new ArrayList<>();
-        try (InputStream input = file.getInputStream(); Workbook workbook = new XSSFWorkbook(input)) {
+        try (Workbook workbook = openWorkbook(file)) {
             Sheet sheet = workbook.getSheetAt(0);
             boolean headerSkipped = false;
             for (Row row : sheet) {
@@ -101,8 +104,34 @@ public class StudentService {
                 });
             }
             return imported;
-        } catch (Exception ex) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Unable to read Excel file");
+        } catch (IOException ex) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Unable to close Excel workbook");
+        }
+    }
+
+    private Workbook openWorkbook(MultipartFile file) {
+        try {
+            InputStream input = file.getInputStream();
+            try {
+                return WorkbookFactory.create(input);
+            } catch (IOException | RuntimeException ex) {
+                input.close();
+                throw ex;
+            }
+        } catch (IOException | RuntimeException ex) {
+            throw new ApiException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid Excel file. Upload a valid .xlsx or .xls workbook, not a renamed or corrupted file."
+            );
+        }
+    }
+
+    private void validateExcelUpload(MultipartFile file) {
+        String filename = file.getOriginalFilename() == null
+                ? ""
+                : file.getOriginalFilename().trim().toLowerCase(Locale.ROOT);
+        if (!filename.endsWith(".xlsx") && !filename.endsWith(".xls")) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Upload an Excel workbook with a .xlsx or .xls extension");
         }
     }
 

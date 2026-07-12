@@ -9,10 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Upload, ExternalLink, ArrowLeft } from "lucide-react";
+import { DepartmentResourceActions } from "@/components/department-resource-viewer";
+import { Loader2, Upload, ArrowLeft } from "lucide-react";
 
-export default function AdminDepartmentDetail({ params }: { params: { id: string } }) {
-  const id = params.id;
+type RouteParams = { id: string };
+
+export default function AdminDepartmentDetail({ params }: { params: RouteParams | Promise<RouteParams> }) {
+  const [id, setId] = React.useState<string | null>(null);
   const [department, setDepartment] = React.useState<Department | null>(null);
   const [resources, setResources] = React.useState<DepartmentResource[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -22,7 +25,18 @@ export default function AdminDepartmentDetail({ params }: { params: { id: string
   const [description, setDescription] = React.useState("");
   const [folder, setFolder] = React.useState("");
 
+  React.useEffect(() => {
+    let mounted = true;
+    void Promise.resolve(params).then((resolved) => {
+      if (mounted) setId(resolved.id);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [params]);
+
   const load = React.useCallback(async () => {
+    if (!id) return;
     setLoading(true);
     try {
       const [dept, rows] = await Promise.all([
@@ -43,11 +57,16 @@ export default function AdminDepartmentDetail({ params }: { params: { id: string
   }, [id]);
 
   React.useEffect(() => {
-    void load();
-  }, [load]);
+    if (id) void load();
+  }, [id, load]);
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!id) {
+      toast.error("Department is still loading");
+      return;
+    }
+
     if (!file) {
       toast.error("Select a file to upload");
       return;
@@ -139,7 +158,7 @@ export default function AdminDepartmentDetail({ params }: { params: { id: string
                     <p className="break-words text-sm text-muted-foreground">{r.description || "No description."}</p>
                     <p className="break-all text-xs text-muted-foreground">{r.fileType || "Unknown file type"}</p>
                   </div>
-                  {r.fileUrl ? <Button asChild variant="outline" size="sm" className="shrink-0"><a href={r.fileUrl} target="_blank" rel="noreferrer"><ExternalLink className="mr-1 h-4 w-4" /> Open</a></Button> : null}
+                  <DepartmentResourceActions resource={r} />
                 </div>
               </div>
             ))}
