@@ -33,6 +33,10 @@ public class DepartmentService {
                 .toList();
     }
 
+    public List<Department> searchPublished(String q) {
+        return departmentRepository.searchPublished(q == null ? "" : q);
+    }
+
     public List<Department> listAll() {
         return departmentRepository.findAll();
     }

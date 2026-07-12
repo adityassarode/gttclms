@@ -20,16 +20,24 @@ export default function DepartmentPage({ params }: Props) {
   React.useEffect(() => {
     let mounted = true;
     setLoading(true);
-    void Promise.all([api.getDepartment(id), api.getDepartmentResources(id)])
-      .then(([d, r]) => {
+    void Promise.allSettled([
+      api.getDepartment(id),
+      api.getDepartmentResources(id),
+    ])
+      .then(([departmentResult, resourcesResult]) => {
         if (!mounted) return;
-        setDepartment(d);
-        setResources(r || []);
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setDepartment(null);
-        setResources([]);
+
+        if (departmentResult.status === "fulfilled") {
+          setDepartment(departmentResult.value);
+        } else {
+          setDepartment(null);
+        }
+
+        setResources(
+          resourcesResult.status === "fulfilled"
+            ? resourcesResult.value || []
+            : [],
+        );
       })
       .finally(() => mounted && setLoading(false));
 
