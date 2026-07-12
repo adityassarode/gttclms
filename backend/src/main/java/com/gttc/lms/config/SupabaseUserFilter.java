@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -56,7 +57,7 @@ public class SupabaseUserFilter extends OncePerRequestFilter {
                     return;
                 }
 
-                var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + fallbackUser.getRole().name()));
+                var authorities = roleAuthorities(fallbackUser);
                 var appAuth = new UsernamePasswordAuthenticationToken(fallbackUser, null, authorities);
                 SecurityContextHolder.getContext().setAuthentication(appAuth);
                 currentAuth = appAuth;
@@ -77,7 +78,7 @@ public class SupabaseUserFilter extends OncePerRequestFilter {
                     return;
                 }
 
-                var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+                var authorities = roleAuthorities(user);
                 var appAuth = new UsernamePasswordAuthenticationToken(user, null, authorities);
 
                 SecurityContextHolder.getContext().setAuthentication(appAuth);
@@ -147,5 +148,16 @@ public class SupabaseUserFilter extends OncePerRequestFilter {
         }
 
         return fallback;
+    }
+
+    private List<SimpleGrantedAuthority> roleAuthorities(User user) {
+        List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+        if (user.getRole() != null) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+            if (user.getRole().hasAdminPrivileges()) {
+                authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+            }
+        }
+        return authorities;
     }
 }

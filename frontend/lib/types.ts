@@ -1,4 +1,4 @@
-export type UserRole = "USER" | "ADMIN" | string;
+export type UserRole = "USER" | "ADMIN" | "SUPER_ADMIN" | string;
 export type UserStatus = "ACTIVE" | "BANNED" | string;
 export type BorrowStatus = "BORROWED" | "RETURNED" | string;
 export type ReservationStatus = "ACTIVE" | "CANCELLED" | "EXPIRED" | string;

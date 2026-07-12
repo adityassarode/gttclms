@@ -225,7 +225,7 @@ public class StudyNoteService {
     }
 
     private void validateAdmin(User user) {
-        if (user.getRole() != Role.ADMIN) {
+        if ((user.getRole() == null || !user.getRole().hasAdminPrivileges())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Admin access required");
         }
     }
