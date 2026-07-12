@@ -15,7 +15,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.MediaType;
 
 @RestController
 @RequestMapping("/api/admin/departments")
@@ -66,12 +68,16 @@ public class AdminDepartmentController {
         departmentService.assignAdmin(id, userId);
     }
 
-    @PostMapping("/{id}/resources")
+    @PostMapping(value = "/{id}/resources", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
-    public com.gttc.lms.dto.DepartmentResourceResponse uploadResource(@PathVariable Long id, org.springframework.web.multipart.MultipartFile file,
-                               @org.springframework.web.bind.annotation.RequestParam(required = false) String title,
-                               @org.springframework.web.bind.annotation.RequestParam(required = false) String description,
-                               @org.springframework.web.bind.annotation.RequestParam(required = false) String folder) {
+    public com.gttc.lms.dto.DepartmentResourceResponse uploadResource(
+            @PathVariable Long id,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false) String folder
+    ) {
+        departmentService.findById(id).orElseThrow();
         String url = fileStorageService.store("departments/" + id, file);
         com.gttc.lms.model.DepartmentResource resource = new com.gttc.lms.model.DepartmentResource();
         resource.setDepartmentId(id);
